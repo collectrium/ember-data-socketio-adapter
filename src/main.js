@@ -1,6 +1,6 @@
-import serializer from "ember-data-socket-adapter/serializer";
-import adapter from "ember-data-socket-adapter/adapter";
-import store from "ember-data-socket-adapter/store";
+import serializer from "socket-adapter/serializer";
+import adapter from "socket-adapter/adapter";
+import store from "socket-adapter/store";
 
 var VERSION = "SOCKET-ADAPTER-VERSION";
 var SA;
