@@ -1,0 +1,2 @@
+ember-data-socket-adapter
+=========================
