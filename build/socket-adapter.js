@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.8
-// 6ce8a46 (2014-04-16 19:56:08 +0300)
+// v0.1.9
+// 67d7b41 (2014-04-16 20:03:42 +0300)
 
 
 (function(global) {
@@ -139,8 +139,8 @@ define("socket-adapter/adapter",
         socketNS.on('message', function(response) {
           //TODO: think about push update
           if (response.request_id && requestsPool[response.request_id]) {
-            Ember.run(null, requestsPool[response.request_id].resolve, response);
             delete response.request_id;
+            Ember.run(null, requestsPool[response.request_id].resolve, response);
             delete requestsPool[response.request_id];
           }
         });
@@ -321,7 +321,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = "0.1.8";
+    var VERSION = "0.1.9";
     var SA;
     if ('undefined' === typeof SA) {
 
