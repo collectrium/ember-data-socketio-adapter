@@ -4,8 +4,10 @@ var forEach = Ember.EnumerableUtils.forEach;
 
 var SocketAdapter = DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
-  socketConnections: null,
   bulkOperationsSupport: true,
+
+  socketConnections: null,
+  requestsPool: null,
 
   /**
    * generate unique request id
@@ -222,6 +224,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
   openSocket: function() {
     set(this, 'socketConnections', Ember.Object.create());
+    set(this, 'requestsPool', Ember.Object.create());
     this.getConnection({
       resource: 'handshake'
     });
