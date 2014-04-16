@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.5
-// 99a3f4b (2014-04-16 15:19:33 +0300)
+// v0.1.6
+// 62529b6 (2014-04-16 15:27:17 +0300)
 
 
 (function(global) {
@@ -83,8 +83,10 @@ define("socket-adapter/adapter",
 
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
-      socketConnections: null,
       bulkOperationsSupport: true,
+
+      socketConnections: null,
+      requestsPool: null,
 
       /**
        * generate unique request id
@@ -301,6 +303,7 @@ define("socket-adapter/adapter",
 
       openSocket: function() {
         set(this, 'socketConnections', Ember.Object.create());
+        set(this, 'requestsPool', Ember.Object.create());
         this.getConnection({
           resource: 'handshake'
         });
@@ -317,7 +320,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = "0.1.5";
+    var VERSION = "0.1.6";
     var SA;
     if ('undefined' === typeof SA) {
 
