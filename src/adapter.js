@@ -43,7 +43,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
     }
     var connections = get(this, 'socketConnections'),
       socketNS = get(connections, root),
-      address = this.get('socketAddress');
+      address = this.get('socketAddress'),
+      requestsPool = this.get('requestsPool');
 
     if (!socketNS) {
       address += '/';
@@ -53,6 +54,15 @@ var SocketAdapter = DS.RESTAdapter.extend({
       socketNS = io.connect(address, options);
       set(connections, root, socketNS);
     }
+    //TODO: when should be reject promise hmmm?
+    socketNS.on('message', function(response) {
+      //TODO: think about push update
+      if (response.request_id && requestsPool[response.request_id]) {
+        Ember.run(null, requestsPool[response.request_id].resolve, response);
+        delete requestsPool[response.request_id];
+      }
+    });
+
     return socketNS;
   },
 
@@ -64,24 +74,19 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   send: function(type, requestType, hash) {
-    var connection = this.getConnection(type.typeKey);
+    var connection = this.getConnection(type.typeKey),
+      requestsPool = this.get('requestsPool'),
+      requestId = this.generateRequestId(),
+      deffered = Ember.RSVP.defer(
+          "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey
+      );
     if (!(hash instanceof Object)) {
-      hash = {}
+      hash = {};
     }
-    hash.request_id = this.generateRequestId();
-
-    return new Ember.RSVP.Promise(function(resolve, reject) {
-      connection.emit(requestType, hash);
-
-      //TODO: when should be reject promise hmmm?
-      connection.on(requestType, function(response) {
-        //TODO: think about push update
-        if ((response.request_id) === hash.request_id) {
-          Ember.run(null, resolve, response.payload);
-        }
-      });
-
-    }, "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
+    hash.request_id = requestId;
+    requestsPool[requestId] = deffered;
+    connection.emit(requestType, hash);
+    return deffered.promise;
   },
 
   /**
@@ -140,12 +145,12 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   createRecords: function(store, type, records) {
     var serializer = store.serializerFor(type.typeKey),
-      data = [];
+      data = {};
+    data[type.typeKey] = [];
 
     forEach(records, function(record) {
-      data.push(serializer.serialize(record));
+      data[type.typeKey].push(serializer.serialize(record));
     });
-
     return this.send(type, 'CREATE_LIST', data);
   },
 
@@ -172,10 +177,11 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   updateRecords: function(store, type, records) {
     var serializer = store.serializerFor(type.typeKey),
-      data = [];
+      data = {};
+    data[type.typeKey] = [];
 
     forEach(records, function(record) {
-      data.push(serializer.serialize(record, { includeId: true }));
+      data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
     });
 
     return this.send(type, 'UPDATE_LIST', data);
@@ -202,10 +208,12 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   deleteRecords: function(store, type, records) {
-    var data = [];
+    var data = {
+      ids: []
+    };
 
     forEach(records, function(record) {
-      data.push(get(record, 'id'));
+      data.ids.push(get(record, 'id'));
     });
 
     return this.send(type, 'DELETE_LIST', data);
