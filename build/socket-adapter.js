@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.4
-// 5b19c1b (2014-04-11 18:19:04 +0300)
+// v0.1.5
+// 99a3f4b (2014-04-16 15:19:33 +0300)
 
 
 (function(global) {
@@ -45,7 +45,8 @@ var define, requireModule, require, requirejs;
     }
 
     var value = callback.apply(this, reified);
-    return seen[name] = exports || value;
+    seen[name] = exports || value;
+    return seen[name];
 
     function resolve(child) {
       if (child.charAt(0) !== '.') {
@@ -121,7 +122,8 @@ define("socket-adapter/adapter",
         }
         var connections = get(this, 'socketConnections'),
           socketNS = get(connections, root),
-          address = this.get('socketAddress');
+          address = this.get('socketAddress'),
+          requestsPool = this.get('requestsPool');
 
         if (!socketNS) {
           address += '/';
@@ -131,6 +133,15 @@ define("socket-adapter/adapter",
           socketNS = io.connect(address, options);
           set(connections, root, socketNS);
         }
+        //TODO: when should be reject promise hmmm?
+        socketNS.on('message', function(response) {
+          //TODO: think about push update
+          if (response.request_id && requestsPool[response.request_id]) {
+            Ember.run(null, requestsPool[response.request_id].resolve, response);
+            delete requestsPool[response.request_id];
+          }
+        });
+
         return socketNS;
       },
 
@@ -142,24 +153,19 @@ define("socket-adapter/adapter",
        * @returns {Ember.RSVP.Promise}
        */
       send: function(type, requestType, hash) {
-        var connection = this.getConnection(type.typeKey);
+        var connection = this.getConnection(type.typeKey),
+          requestsPool = this.get('requestsPool'),
+          requestId = this.generateRequestId(),
+          deffered = Ember.RSVP.defer(
+              "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey
+          );
         if (!(hash instanceof Object)) {
-          hash = {}
+          hash = {};
         }
-        hash.request_id = this.generateRequestId();
-
-        return new Ember.RSVP.Promise(function(resolve, reject) {
-          connection.emit(requestType, hash);
-
-          //TODO: when should be reject promise hmmm?
-          connection.on(requestType, function(response) {
-            //TODO: think about push update
-            if ((response.request_id) === hash.request_id) {
-              Ember.run(null, resolve, response.payload);
-            }
-          });
-
-        }, "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
+        hash.request_id = requestId;
+        requestsPool[requestId] = deffered;
+        connection.emit(requestType, hash);
+        return deffered.promise;
       },
 
       /**
@@ -218,12 +224,12 @@ define("socket-adapter/adapter",
        */
       createRecords: function(store, type, records) {
         var serializer = store.serializerFor(type.typeKey),
-          data = [];
+          data = {};
+        data[type.typeKey] = [];
 
         forEach(records, function(record) {
-          data.push(serializer.serialize(record));
+          data[type.typeKey].push(serializer.serialize(record));
         });
-
         return this.send(type, 'CREATE_LIST', data);
       },
 
@@ -250,10 +256,11 @@ define("socket-adapter/adapter",
        */
       updateRecords: function(store, type, records) {
         var serializer = store.serializerFor(type.typeKey),
-          data = [];
+          data = {};
+        data[type.typeKey] = [];
 
         forEach(records, function(record) {
-          data.push(serializer.serialize(record, { includeId: true }));
+          data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
         });
 
         return this.send(type, 'UPDATE_LIST', data);
@@ -280,10 +287,12 @@ define("socket-adapter/adapter",
        * @returns {Ember.RSVP.Promise}
        */
       deleteRecords: function(store, type, records) {
-        var data = [];
+        var data = {
+          ids: []
+        };
 
         forEach(records, function(record) {
-          data.push(get(record, 'id'));
+          data.ids.push(get(record, 'id'));
         });
 
         return this.send(type, 'DELETE_LIST', data);
@@ -308,7 +317,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = "0.1.4";
+    var VERSION = "0.1.5";
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -330,11 +339,16 @@ define("socket-adapter/serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
-    DS.SocketSerializer = DS.RESTSerializer.extend({
-
+    var Serializer = DS.RESTSerializer.extend({
+      extractFindQuery: function(store, type, payload) {
+        return this.extractArray(store, type, payload.payload);
+      },
+      extractFindAll: function(store, type, payload) {
+        return this.extractArray(store, type, payload.payload);
+      }
     });
 
-    __exports__["default"] = DS.SocketSerializer;
+    __exports__["default"] = Serializer;
   });
 define("socket-adapter/store", 
   ["exports"],
@@ -342,6 +356,8 @@ define("socket-adapter/store",
     "use strict";
     var get = Ember.get, set = Ember.set;
     var forEach = Ember.EnumerableUtils.forEach;
+    var Promise = Ember.RSVP.Promise;
+    var PromiseArray = Ember.ArrayProxy.extend(Ember.PromiseProxyMixin);
 
     //copied from ember-data store core
     function isThenable(object) {
@@ -406,6 +422,13 @@ define("socket-adapter/store",
       }, label);
     }
 
+    //copied from ember-data store core
+    function promiseArray(promise, label) {
+      return PromiseArray.create({
+        promise: Promise.cast(promise, label)
+      });
+    }
+
     function _bulkCommit(adapter, store, operation, type, records) {
       var promise = adapter[operation](store, type, records),
         serializer = serializerForAdapter(adapter, type),
@@ -444,7 +467,64 @@ define("socket-adapter/store",
       }, label);
     }
 
+    function _findQuery(adapter, store, type, query, recordArray) {
+      var promise = adapter.findQuery(store, type, query, recordArray),
+        serializer = serializerForAdapter(adapter, type),
+        label = "DS: Handle Adapter#findQuery of " + type;
+
+      return Promise.cast(promise, label).then(function(adapterPayload) {
+        var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
+
+        Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
+        recordArray.load(payload);
+        if (adapterPayload.meta){
+          recordArray.set('_meta', adapterPayload.meta);
+        }
+        return recordArray;
+      }, null, "DS: Extract payload of findQuery " + type);
+    }
+
+
     var Store = DS.Store.extend({
+      findQuery: function(type, query) {
+        type = this.modelFor(type);
+
+        var array = this.recordArrayManager
+          .createAdapterPopulatedRecordArray(type, query);
+
+        var adapter = this.adapterFor(type);
+
+        Ember.assert("You tried to load a query but you have no adapter (for " + type + ")", adapter);
+        Ember.assert("You tried to load a query but your adapter does not implement `findQuery`", adapter.findQuery);
+
+        return promiseArray(_findQuery(adapter, this, type, query, array));
+      },
+      filter: function(type, query, filter) {
+        var promise;
+
+        // allow an optional server query
+        if (arguments.length === 3) {
+          promise = this.findQuery(type, query);
+        } else if (arguments.length === 2) {
+          filter = query;
+        }
+
+        type = this.modelFor(type);
+
+        var array = this.recordArrayManager
+          .createFilteredRecordArray(type, filter);
+        promise = promise || Promise.cast(array);
+
+        return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
+          var meta = adapterPopulatedRecordArray.get('_meta');
+          if (meta){
+            array.set('_meta', meta);
+          }
+          return array;
+        }, null, "DS: Store#filter of " + type));
+      },
+
       flushPendingSave: function() {
         var pending = this._pendingSave.slice();
         this._pendingSave = [];
