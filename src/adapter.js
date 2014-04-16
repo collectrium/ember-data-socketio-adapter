@@ -60,8 +60,9 @@ var SocketAdapter = DS.RESTAdapter.extend({
     socketNS.on('message', function(response) {
       //TODO: think about push update
       if (response.request_id && requestsPool[response.request_id]) {
-        Ember.run(null, requestsPool[response.request_id].resolve, response);
+        var resolver = requestsPool[response.request_id].resolve;
         delete response.request_id;
+        Ember.run(null, resolver, response);
         delete requestsPool[response.request_id];
       }
     });
