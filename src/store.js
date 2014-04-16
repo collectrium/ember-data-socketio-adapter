@@ -219,9 +219,15 @@ var Store = DS.Store.extend({
     if (bulkRecords.length) {
       for (i = 0; i < bulkRecords.length; i++) {
         for (j = 0; j < bulkDataOperationMap.length; j++)
-          if (bulkRecords[i][j] && bulkRecords[i][j].length) {
-            bulkDataResolvers[i].resolve(_bulkCommit(bulkDataAdapters[i], this,
-                bulkDataOperationMap[j] + 's', bulkDataTypeMap[i], bulkRecords[i][j]));
+          if (bulkRecords[i][j]) {
+            if (bulkRecords[i][j].length === 1){
+              bulkDataResolvers[i].resolve(_commit(bulkDataAdapters[i], this,
+                bulkDataOperationMap[j], bulkRecords[i][j][0]));
+            }
+            if (bulkRecords[i][j].length > 1){
+              bulkDataResolvers[i].resolve(_bulkCommit(bulkDataAdapters[i], this,
+                  bulkDataOperationMap[j] + 's', bulkDataTypeMap[i], bulkRecords[i][j]));
+            }
           }
       }
     }
