@@ -135,8 +135,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   createRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
-      data = serializer.serialize(record, { includeId: true });
+      data = {};
+    data[type.typeKey] = [];
 
+    data[type.typeKey].push(serializer.serialize(record));
     return this.send(type, 'CREATE', data);
   },
 
@@ -167,8 +169,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   updateRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
-      data = serializer.serialize(record, { includeId: true });
+      data = {};
+    data[type.typeKey] = [];
 
+    data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
     return this.send(type, 'UPDATE', data);
   },
 

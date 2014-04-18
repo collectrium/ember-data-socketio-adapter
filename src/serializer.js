@@ -4,6 +4,15 @@ var Serializer = DS.RESTSerializer.extend({
   },
   extractFindAll: function(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
+  },
+  extractCreateRecords: function(store, type, payload) {
+    return this.extractArray(store, type, payload);
+  },
+  extractUpdateRecords: function(store, type, payload) {
+    return this.extractArray(store, type, payload);
+  },
+  extractDeleteRecords: function(store, type, payload) {
+    return this.extractArray(store, type, payload);
   }
 });
 

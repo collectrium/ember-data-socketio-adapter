@@ -12,11 +12,11 @@ module.exports = function(grunt) {
   grunt.task.registerTask('release',
     ['bump-only', 'dist', 'usebanner:bump', 'copy:bump', 'bump-commit']
   );
-  /*grunt.task.registerTask('test',
-    ['dist', 'usebanner:distBanner', 'jshint', 'emberhandlebars', 'concat:test', 'karma']
-  );*/
+  grunt.task.registerTask('test',
+    ['dist', 'usebanner:distBanner', 'jshint', 'karma']
+  );
   grunt.task.registerTask('build',
-    ['clean', 'transpile:amd', 'concat:amd', 'browser:dist', 'replace:update_version']
+    ['clean', 'concurrent:transpile', 'concat:amd', 'browser:dist', 'replace:update_version']
   );
   grunt.task.registerTask('dist',
     ['build', 'replace:strip_debug_messages_production', 'uglify:dist', 'get_git_rev']
