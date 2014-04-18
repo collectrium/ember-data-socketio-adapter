@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.10
-// b0f10c4 (2014-04-16 20:08:42 +0300)
+// v0.1.11
+// 898809d (2014-04-18 17:22:50 +0300)
 
 
 (function(global) {
@@ -214,8 +214,10 @@ define("socket-adapter/adapter",
        */
       createRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
-          data = serializer.serialize(record, { includeId: true });
+          data = {};
+        data[type.typeKey] = [];
 
+        data[type.typeKey].push(serializer.serialize(record));
         return this.send(type, 'CREATE', data);
       },
 
@@ -246,8 +248,10 @@ define("socket-adapter/adapter",
        */
       updateRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
-          data = serializer.serialize(record, { includeId: true });
+          data = {};
+        data[type.typeKey] = [];
 
+        data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
         return this.send(type, 'UPDATE', data);
       },
 
@@ -322,7 +326,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = "0.1.10";
+    var VERSION = "0.1.11";
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -350,6 +354,15 @@ define("socket-adapter/serializer",
       },
       extractFindAll: function(store, type, payload) {
         return this.extractArray(store, type, payload.payload);
+      },
+      extractCreateRecords: function(store, type, payload) {
+        return this.extractArray(store, type, payload);
+      },
+      extractUpdateRecords: function(store, type, payload) {
+        return this.extractArray(store, type, payload);
+      },
+      extractDeleteRecords: function(store, type, payload) {
+        return this.extractArray(store, type, payload);
       }
     });
 
@@ -402,8 +415,7 @@ define("socket-adapter/store",
         serializer = serializerForAdapter(adapter, type),
         label = "DS: Extract and notify about " + operation + " completion of " + record;
 
-      Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " +
-                   promise, isThenable(promise));
+      ;
 
       return promise.then(function(adapterPayload) {
         var payload;
@@ -440,25 +452,19 @@ define("socket-adapter/store",
         label = "DS: Extract and notify about " + operation + " completion of " + records.length +
                 " of type " + type.typeKey;
 
-      Ember.assert("Your adapter's '" + operation +
-                   "' method must return a promise, but it returned " +
-                   promise, isThenable(promise));
+      ;
 
       return promise.then(function(adapterPayload) {
-        //TODO: iterate through adapterPayload and load record's json to store
-        if (adapterPayload) {
-          operation = operation.substring(0, operation.length - 1);
-          forEach(records, function(record) {
-            var payload;
-            if (adapterPayload) {
-              payload = serializer.extract(store, type, adapterPayload, null, operation);
-            } else {
-              payload = adapterPayload;
-            }
-            store.didSaveRecord(record, payload);
+        var payload;
 
-          }, this);
+        if (adapterPayload) {
+          payload = serializer.extract(store, type, adapterPayload, null, operation);
+        } else {
+          payload = adapterPayload;
         }
+        forEach(records, function(record, index) {
+          store.didSaveRecord(record, payload[index]);
+        });
         return records;
       }, function(reason) {
         forEach(records, function(record) {
@@ -467,7 +473,7 @@ define("socket-adapter/store",
           } else {
             store.recordWasError(record, reason);
           }
-        }, this);
+        });
         throw reason;
       }, label);
     }
@@ -541,7 +547,7 @@ define("socket-adapter/store",
             'createRecord',
             'deleteRecord',
             'updateRecord'
-          ], i, j;
+          ], resolvers, i, j, k;
 
         forEach(pending, function(tuple) {
           var record = tuple[0], resolver = tuple[1],
@@ -563,10 +569,10 @@ define("socket-adapter/store",
               bulkDataTypeMap.push(type);
               typeIndex = bulkDataTypeMap.length - 1;
               bulkRecords[typeIndex] = [];
-              bulkDataResolvers[typeIndex] = resolver;
+              bulkDataResolvers[typeIndex] = [];
               bulkDataAdapters[typeIndex] = this.adapterFor(record.constructor);
             }
-
+            bulkDataResolvers[typeIndex].push(resolver);
             if (!(bulkRecords[typeIndex][operationIndex] instanceof Array)) {
               bulkRecords[typeIndex][operationIndex] = [];
             }
@@ -577,19 +583,26 @@ define("socket-adapter/store",
           }
         }, this);
 
+        /*jshint -W083 */
         if (bulkRecords.length) {
           for (i = 0; i < bulkRecords.length; i++) {
-            for (j = 0; j < bulkDataOperationMap.length; j++)
-              if (bulkRecords[i][j]) {
-                if (bulkRecords[i][j].length === 1){
-                  bulkDataResolvers[i].resolve(_commit(bulkDataAdapters[i], this,
+            for (j = 0; j < bulkDataOperationMap.length; j++) {
+              if (bulkRecords[i][j] && bulkRecords[i][j].length) {
+                if (bulkRecords[i][j].length === 1) {
+                  bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this,
                     bulkDataOperationMap[j], bulkRecords[i][j][0]));
+                  return;
                 }
-                if (bulkRecords[i][j].length > 1){
-                  bulkDataResolvers[i].resolve(_bulkCommit(bulkDataAdapters[i], this,
-                      bulkDataOperationMap[j] + 's', bulkDataTypeMap[i], bulkRecords[i][j]));
-                }
+                resolvers = bulkDataResolvers[i];
+                _bulkCommit(bulkDataAdapters[i], this,
+                  bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
+                  .then(function(records) {
+                    for (k = 0; k < resolvers.length; k++) {
+                      resolvers[k].resolve(records[k]);
+                    }
+                  });
               }
+            }
           }
         }
       }
