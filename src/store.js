@@ -41,8 +41,7 @@ function _commit(adapter, store, operation, record) {
     serializer = serializerForAdapter(adapter, type),
     label = "DS: Extract and notify about " + operation + " completion of " + record;
 
-  Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " +
-               promise, isThenable(promise));
+  Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
 
   return promise.then(function(adapterPayload) {
     var payload;
@@ -79,25 +78,19 @@ function _bulkCommit(adapter, store, operation, type, records) {
     label = "DS: Extract and notify about " + operation + " completion of " + records.length +
             " of type " + type.typeKey;
 
-  Ember.assert("Your adapter's '" + operation +
-               "' method must return a promise, but it returned " +
-               promise, isThenable(promise));
+  Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
 
   return promise.then(function(adapterPayload) {
-    //TODO: iterate through adapterPayload and load record's json to store
-    if (adapterPayload) {
-      operation = operation.substring(0, operation.length - 1);
-      forEach(records, function(record) {
-        var payload;
-        if (adapterPayload) {
-          payload = serializer.extract(store, type, adapterPayload, null, operation);
-        } else {
-          payload = adapterPayload;
-        }
-        store.didSaveRecord(record, payload);
+    var payload;
 
-      }, this);
+    if (adapterPayload) {
+      payload = serializer.extract(store, type, adapterPayload, null, operation);
+    } else {
+      payload = adapterPayload;
     }
+    forEach(records, function(record, index) {
+      store.didSaveRecord(record, payload[index]);
+    });
     return records;
   }, function(reason) {
     forEach(records, function(record) {
@@ -106,7 +99,7 @@ function _bulkCommit(adapter, store, operation, type, records) {
       } else {
         store.recordWasError(record, reason);
       }
-    }, this);
+    });
     throw reason;
   }, label);
 }
@@ -180,7 +173,7 @@ var Store = DS.Store.extend({
         'createRecord',
         'deleteRecord',
         'updateRecord'
-      ], i, j;
+      ], resolvers, i, j, k;
 
     forEach(pending, function(tuple) {
       var record = tuple[0], resolver = tuple[1],
@@ -202,10 +195,10 @@ var Store = DS.Store.extend({
           bulkDataTypeMap.push(type);
           typeIndex = bulkDataTypeMap.length - 1;
           bulkRecords[typeIndex] = [];
-          bulkDataResolvers[typeIndex] = resolver;
+          bulkDataResolvers[typeIndex] = [];
           bulkDataAdapters[typeIndex] = this.adapterFor(record.constructor);
         }
-
+        bulkDataResolvers[typeIndex].push(resolver);
         if (!(bulkRecords[typeIndex][operationIndex] instanceof Array)) {
           bulkRecords[typeIndex][operationIndex] = [];
         }
@@ -216,19 +209,26 @@ var Store = DS.Store.extend({
       }
     }, this);
 
+    /*jshint -W083 */
     if (bulkRecords.length) {
       for (i = 0; i < bulkRecords.length; i++) {
-        for (j = 0; j < bulkDataOperationMap.length; j++)
-          if (bulkRecords[i][j]) {
-            if (bulkRecords[i][j].length === 1){
-              bulkDataResolvers[i].resolve(_commit(bulkDataAdapters[i], this,
+        for (j = 0; j < bulkDataOperationMap.length; j++) {
+          if (bulkRecords[i][j] && bulkRecords[i][j].length) {
+            if (bulkRecords[i][j].length === 1) {
+              bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this,
                 bulkDataOperationMap[j], bulkRecords[i][j][0]));
+              return;
             }
-            if (bulkRecords[i][j].length > 1){
-              bulkDataResolvers[i].resolve(_bulkCommit(bulkDataAdapters[i], this,
-                  bulkDataOperationMap[j] + 's', bulkDataTypeMap[i], bulkRecords[i][j]));
-            }
+            resolvers = bulkDataResolvers[i];
+            _bulkCommit(bulkDataAdapters[i], this,
+              bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
+              .then(function(records) {
+                for (k = 0; k < resolvers.length; k++) {
+                  resolvers[k].resolve(records[k]);
+                }
+              });
           }
+        }
       }
     }
   }

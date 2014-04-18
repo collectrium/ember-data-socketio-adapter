@@ -3,9 +3,13 @@ tmp/
 *swp
 
 node_modules/
-bower_components/
+/vendor/*
+!/vendor/loader.js
 
 #IDE
 .idea/
+
+tests/dist/
+tests/lib/tmpl.min.js
 
 npm-debug.log
