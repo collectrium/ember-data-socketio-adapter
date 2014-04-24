@@ -304,7 +304,7 @@ test('Deleate any Posts', function () {
       }
     });
     posts.save().then(async(function (posts) {
-      //TODO: socketRequest type equal UPDATE, but should be equal UPDATE_LIST
+      //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST
       console.log(socketRequest); 
     }));
   }));
