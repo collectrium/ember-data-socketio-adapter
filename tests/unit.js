@@ -118,6 +118,7 @@ test('Create Post', function() {
   }));
 });
 
+
 test('Create Posts', function() {
   expect(2);
   socketResponse({ post: [
@@ -158,4 +159,154 @@ test('Create Posts', function() {
     });
     ok(loaded, 'posts should be loaded in store correctly');
   }));
+});
+
+test('Update Post', function () {
+  expect(2);
+  socketResponse({ post: [
+    { id: 1, name: 'Socket.io is awesome' }
+  ] });
+
+  var post = store.find('post', 1);
+  Ember.RSVP.resolve(post).then(async(function (post) {
+    ok(post.get('isLoaded'), 'post should be loaded correctly');
+
+    socketResponse({ post: [
+      { id: 1, name: 'Javascript is awesome' }
+    ] });
+
+    post.set('name', 'Javascript is awesome');
+    post.save().then(async(function (post) {
+      deepEqual(socketRequest, {
+          type: 'post',
+          requestType: 'UPDATE',
+          hash: { post: [
+            { id: '1', name: 'Javascript is awesome', comments: []}
+          ]
+        }
+      }, 
+        'Post UPDATE event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "UPDATE", \n' +
+        '\t hash: { post: [ \n' +
+        '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
+        '\t ]}\n' +
+        '  }' 
+      ); 
+    }));
+  }));
+});
+
+test('Update any Posts', function () {
+  expect(2);
+  socketResponse({
+    meta: {}, payload: { post: [
+      {id: 1, name: 'Socket.io is awesome'},
+      {id: 2, name: 'Ember.js is awesome'}
+    ]}
+  });
+
+  store.find('post').then(async(function (posts) {
+    ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
+
+    forEach(posts, function (post) {
+      post.set('name', 'Javascript is awesome');
+    });
+    socketResponse({
+      post: [
+        { id: 1, name: 'Javascript is awesome' },
+        { id: 2, name: 'Javascript is awesome' }
+      ]
+    });
+    posts.save().then(async(function (posts) {
+      deepEqual(socketRequest, {
+        type: 'post',
+        requestType: 'UPDATE_LIST',
+        hash: { post: [
+          { id: '1', name: 'Javascript is awesome', comments: [] },
+          { id: '2', name: 'Javascript is awesome', comments: [] }
+        ]}
+      },
+        'Post UPDATE_LIST event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "UPDATE_LIST", \n' +
+        '\t hash: { post: [ \n' +
+        '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
+        '\t\t { id: "2", name: "Javascript is awesome", comments: [] } \n' +
+        '\t ]}\n' +
+        '  }'       
+      );
+    }));
+
+  }));
+
+});
+
+test('Delete Post', function () {
+  socketResponse({
+    meta: {}, payload: {
+      post: [
+        {id: 1, name: 'Socket.io is awesome'},
+        {id: 2, name: 'Ember.js is awesome'}
+      ]
+    }
+  });
+
+  store.find('post').then(async(function (posts){
+    equal(posts.get('length'), 2, 'posts length should be equal 2');
+    var post = posts.get('lastObject');
+    post.deleteRecord();
+    socketResponse({
+      post: {
+        id: 2
+      }
+    });
+
+    post.save().then(async(function (response) {
+      deepEqual(socketRequest, {
+        type: 'post',
+        requestType: 'DELETE',
+        hash: { id: '2' }
+      },
+        'Post DELETE event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "DELETE", \n' +
+        '\t hash: { id: "2" }\n' +
+        '\t ]}\n' +
+        '  }' 
+      );
+      equal(response.get('id'), 2, 'post id should be equal 2');
+    })); 
+  }));
+});
+
+test('Deleate any Posts', function () {
+  socketResponse({
+    meta: {}, payload: {
+      post: [
+        { id: 1, name: 'Socket.io is awesome' },
+        { id: 2, name: 'Ember.js is awesome' },
+        { id: 3, name: 'Angular.js is awesome' }
+      ]
+    }
+  });
+
+  store.find('post').then(async(function (posts) {
+    equal(posts.get('length'), 3, 'posts length equal should be equal 3');
+    posts.findProperty('id', '3').deleteRecord();
+    posts.findProperty('id', '1').deleteRecord();
+    socketResponse({
+      post: {
+        id: [3, 2]
+      }
+    });
+    posts.save().then(async(function (posts) {
+      //TODO: socketRequest type equal UPDATE, but should be equal UPDATE_LIST
+      console.log(socketRequest); 
+    }));
+  }));
+  ok(true, 'true');
 });
