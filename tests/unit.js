@@ -283,17 +283,18 @@ test('Delete Post', function () {
 });
 
 test('Delete Posts', function () {
+  expect(2);
   socketResponse({
     meta: {}, payload: {
       post: [
         { id: 1, name: 'Socket.io is awesome' },
-        { id: 2, name: 'Ember.js is awesome' },
+        { id: 2, name: 'Ember.js is awesome' }
       ]
     }
   });
 
   store.find('post').then(async(function (posts) {
-    equal(posts.get('length'), 3, 'posts length equal should be equal 3');
+    equal(posts.get('length'), 2, 'posts length equal should be equal 2');
     posts.findProperty('id', '1').deleteRecord();
     posts.findProperty('id', '2').deleteRecord();
     socketResponse({
@@ -302,40 +303,50 @@ test('Delete Posts', function () {
       }
     });
     posts.save().then(async(function (posts) {
-      //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST
-      console.log(socketRequest); 
+      //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST if 
+      //TODO: store has a records after delete records
+      deepEqual(socketRequest, {
+        type: 'post',
+        requestType: 'DELETE_LIST',
+        hash: {
+          ids: ['1', '2']
+        }
+      }, 
+        'Posts DELETE_IST event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "DELETE_LIST", \n' +
+        '\t hash: { ids: ["1", "2"] } \n' +
+        '\t ]} \n' +
+        '  }'
+      );
     }));
   }));
-  ok(true, 'true');
 });
 
 test('Read posts with releations', function () {
+  expect(3);
   socketResponse({
     meta: {}, payload: {
       post: [
         { id: 1, name: 'Javascript is awesome', comments: [1] },
         { id: 2, name: 'Socket.io is awesome', comments: [] },
-        { id: 3, name: 'Ember.js is awesome', comments: [] }
+        { id: 3, name: 'Ember.js is awesome', comments: [2] }
       ],
       comments: [
-        {id: 1, name: 'test'},
-        {id: 2, name: 'test2'}
+        {id: 1, name: 'This good.'},
+        {id: 2, name: 'And angular.js too.'}
       ]
     }
   });
 
-
-  store.filter('post', {
-    include: 'comments'
-  }, function (post) {
-    return post;
-  }).then(async(function (posts) {
-    console.log(socketRequest);
-  }));
   store.find('post', {include: 'comments'}).then(async(function (posts) {
-    console.log(socketRequest);
-    console.log(posts.get('firstObject').get('comments').get('firstObject').get('name'));
+    equal(posts.get('length'), 3, 'posts length should be equal 3');
+    equal(posts.get('firstObject').get('comments').findProperty('id', '1').get('name'), 
+      'This good.',
+      'first comment to first post should be equal "This good."');
+    equal(posts.get('lastObject').get('comments').findProperty('id', '2').get('name'),
+      'And angular.js too.',
+      'first comment to last post should be equal "And angular.js too."');
   }));
-
-  ok(true, 'true');
 });
