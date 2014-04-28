@@ -198,7 +198,7 @@ test('Update Post', function () {
   }));
 });
 
-test('Update any Posts', function () {
+test('Update Posts', function () {
   expect(2);
   socketResponse({
     meta: {}, payload: { post: [
@@ -210,9 +210,8 @@ test('Update any Posts', function () {
   store.find('post').then(async(function (posts) {
     ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
 
-    forEach(posts, function (post) {
-      post.set('name', 'Javascript is awesome');
-    });
+    posts.setEach('name', 'Javascript is awesome');
+
     socketResponse({
       post: [
         { id: 1, name: 'Javascript is awesome' },
@@ -283,24 +282,23 @@ test('Delete Post', function () {
   }));
 });
 
-test('Deleate any Posts', function () {
+test('Delete Posts', function () {
   socketResponse({
     meta: {}, payload: {
       post: [
         { id: 1, name: 'Socket.io is awesome' },
         { id: 2, name: 'Ember.js is awesome' },
-        { id: 3, name: 'Angular.js is awesome' }
       ]
     }
   });
 
   store.find('post').then(async(function (posts) {
     equal(posts.get('length'), 3, 'posts length equal should be equal 3');
-    posts.findProperty('id', '3').deleteRecord();
     posts.findProperty('id', '1').deleteRecord();
+    posts.findProperty('id', '2').deleteRecord();
     socketResponse({
       post: {
-        id: [3, 2]
+        id: [1, 2]
       }
     });
     posts.save().then(async(function (posts) {
@@ -308,5 +306,36 @@ test('Deleate any Posts', function () {
       console.log(socketRequest); 
     }));
   }));
+  ok(true, 'true');
+});
+
+test('Read posts with releations', function () {
+  socketResponse({
+    meta: {}, payload: {
+      post: [
+        { id: 1, name: 'Javascript is awesome', comments: [1] },
+        { id: 2, name: 'Socket.io is awesome', comments: [] },
+        { id: 3, name: 'Ember.js is awesome', comments: [] }
+      ],
+      comments: [
+        {id: 1, name: 'test'},
+        {id: 2, name: 'test2'}
+      ]
+    }
+  });
+
+
+  store.filter('post', {
+    include: 'comments'
+  }, function (post) {
+    return post;
+  }).then(async(function (posts) {
+    console.log(socketRequest);
+  }));
+  store.find('post', {include: 'comments'}).then(async(function (posts) {
+    console.log(socketRequest);
+    console.log(posts.get('firstObject').get('comments').get('firstObject').get('name'));
+  }));
+
   ok(true, 'true');
 });
