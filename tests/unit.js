@@ -125,14 +125,14 @@ test('Create Posts', function() {
     { id: 1, name: 'Socket.io is awesome' },
     { id: 2, name: 'Ember.js is awesome' }
   ] });
-  var posts = [
+  var newPosts = [
     store.createRecord('post', {
       name: 'Socket.io is awesome'
     }),
     store.createRecord('post', {
       name: 'Ember.js is awesome'
     })];
-  Ember.RSVP.all(posts.invoke('save')).then(async(function(posts) {
+  Ember.RSVP.all(newPosts.invoke('save')).then(async(function(posts) {
     deepEqual(socketRequest, {
         type: 'post',
         requestType: 'CREATE_LIST',
@@ -168,7 +168,7 @@ test('Update Post', function () {
   ] });
 
   var post = store.find('post', 1);
-  Ember.RSVP.resolve(post).then(async(function (post) {
+  post.then(async(function (post) {
     ok(post.get('isLoaded'), 'post should be loaded correctly');
 
     socketResponse({ post: [
@@ -184,7 +184,7 @@ test('Update Post', function () {
             { id: '1', name: 'Javascript is awesome', comments: []}
           ]
         }
-      }, 
+      },
         'Post UPDATE event socket request should be equal to \n' +
         '  {' +
         '\t type: "post", \n' +
@@ -192,8 +192,8 @@ test('Update Post', function () {
         '\t hash: { post: [ \n' +
         '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
         '\t ]}\n' +
-        '  }' 
-      ); 
+        '  }'
+      );
     }));
   }));
 });
@@ -203,14 +203,15 @@ test('Update Posts', function () {
   socketResponse({
     meta: {}, payload: { post: [
       {id: 1, name: 'Socket.io is awesome'},
-      {id: 2, name: 'Ember.js is awesome'}
+      {id: 2, name: 'Ember.js is awesome'},
+      {id: 3, name: 'Javascript is awesome'}
     ]}
   });
 
   store.find('post').then(async(function (posts) {
     ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
-
-    posts.setEach('name', 'Javascript is awesome');
+    var updatedPosts = [posts.objectAt(0),posts.objectAt(1)];
+    updatedPosts.setEach('name', 'Javascript is awesome');
 
     socketResponse({
       post: [
@@ -218,7 +219,7 @@ test('Update Posts', function () {
         { id: 2, name: 'Javascript is awesome' }
       ]
     });
-    posts.save().then(async(function (posts) {
+    Ember.RSVP.all(updatedPosts.invoke('save')).then(async(function (posts) {
       deepEqual(socketRequest, {
         type: 'post',
         requestType: 'UPDATE_LIST',
@@ -235,7 +236,7 @@ test('Update Posts', function () {
         '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
         '\t\t { id: "2", name: "Javascript is awesome", comments: [] } \n' +
         '\t ]}\n' +
-        '  }'       
+        '  }'
       );
     }));
 
@@ -275,10 +276,10 @@ test('Delete Post', function () {
         '\t requestType: "DELETE", \n' +
         '\t hash: { id: "2" }\n' +
         '\t ]}\n' +
-        '  }' 
+        '  }'
       );
       equal(response.get('id'), 2, 'post id should be equal 2');
-    })); 
+    }));
   }));
 });
 
@@ -288,21 +289,24 @@ test('Delete Posts', function () {
     meta: {}, payload: {
       post: [
         { id: 1, name: 'Socket.io is awesome' },
-        { id: 2, name: 'Ember.js is awesome' }
+        { id: 2, name: 'Ember.js is awesome' },
+        { id: 3, name: 'Javascript is awesome' }
       ]
     }
   });
 
   store.find('post').then(async(function (posts) {
-    equal(posts.get('length'), 2, 'posts length equal should be equal 2');
-    posts.findProperty('id', '1').deleteRecord();
-    posts.findProperty('id', '2').deleteRecord();
+    equal(posts.get('length'), 3, 'posts length equal should be equal 3');
+    var deletedPosts = [posts.objectAt(0), posts.objectAt(1)];
+    forEach(deletedPosts, function(post){
+      post.deleteRecord();
+    });
     socketResponse({
       post: {
         id: [1, 2]
       }
     });
-    posts.save().then(async(function (posts) {
+    Ember.RSVP.all(deletedPosts.invoke('save')).then(async(function () {
       //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST if 
       //TODO: store has a records after delete records
       deepEqual(socketRequest, {
@@ -311,7 +315,7 @@ test('Delete Posts', function () {
         hash: {
           ids: ['1', '2']
         }
-      }, 
+      },
         'Posts DELETE_IST event socket request should be equal to \n' +
         '  {' +
         '\t type: "post", \n' +
@@ -324,7 +328,7 @@ test('Delete Posts', function () {
   }));
 });
 
-test('Read posts with releations', function () {
+test('Find Posts with relations', function () {
   expect(3);
   socketResponse({
     meta: {}, payload: {
@@ -334,19 +338,19 @@ test('Read posts with releations', function () {
         { id: 3, name: 'Ember.js is awesome', comments: [2] }
       ],
       comments: [
-        {id: 1, name: 'This good.'},
-        {id: 2, name: 'And angular.js too.'}
+        {id: 1, name: 'I think so.'},
+        {id: 2, name: 'I <3 MVC.'}
       ]
     }
   });
 
   store.find('post', {include: 'comments'}).then(async(function (posts) {
     equal(posts.get('length'), 3, 'posts length should be equal 3');
-    equal(posts.get('firstObject').get('comments').findProperty('id', '1').get('name'), 
-      'This good.',
-      'first comment to first post should be equal "This good."');
-    equal(posts.get('lastObject').get('comments').findProperty('id', '2').get('name'),
-      'And angular.js too.',
-      'first comment to last post should be equal "And angular.js too."');
+    equal(posts.get('firstObject').get('comments').findBy('id', '1').get('name'),
+      'I think so.',
+      'first comment to first post should be equal "I think so."');
+    equal(posts.get('lastObject').get('comments').findBy('id', '2').get('name'),
+      'I <3 MVC.',
+      'first comment to last post should be equal "I <3 MVC."');
   }));
 });
