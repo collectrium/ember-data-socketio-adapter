@@ -175,6 +175,7 @@ var Store = DS.Store.extend({
         'updateRecord'
       ], resolvers, i, j, k;
 
+    console.log(pending);
     forEach(pending, function(tuple) {
       var record = tuple[0], resolver = tuple[1],
         type = record.constructor,

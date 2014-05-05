@@ -1,5 +1,6 @@
-var env, store, adapter, Post, Comment, io = {}, socketRequest,
+var env, store, adapter, Post, Comment, io = {}, socketRequest, value,
   forEach = Ember.EnumerableUtils.forEach;
+
 io.connect = function() {
   return {
     on: function() {
@@ -34,31 +35,48 @@ module('unit - Socket Adapter', {
     env.container.register('transform:string', DS.StringTransform);
 
     socketRequest = null;
+    adapter.send = function (type, requestType, hash) {
+      console.log(type, requestType, hash);
+      socketRequest = {};
+      if (type.typeKey) {
+        socketRequest.type = type.typeKey;
+      }
+      if (requestType) {
+        socketRequest.requestType = requestType;
+      }
+      if (hash) {
+        socketRequest.hash = hash;
+      }
+
+      var fix = null;
+      fixtures.forEach(function (fixture) {
+        if (JSON.stringify(fixture.request) === JSON.stringify(socketRequest)) {
+          console.log('\n==========================================');
+          console.log(JSON.stringify(fixture.request), JSON.stringify(socketRequest));
+          console.log(JSON.stringify(fixture.response));
+          console.log('==========================================\n');
+          fix = fixture.response;
+        }
+      });
+      if (fix) {
+        /*console.log('Fixture finded: ');
+        console.log(fix);*/
+        return Ember.RSVP.resolve(fix);
+      } else {
+        return Ember.RSVP.resolve(value);
+      }
+    }
   }
 });
 
-function socketResponse(value) {
-  adapter.send = function(type, requestType, hash) {
-    socketRequest = {};
-    if (type.typeKey) {
-      socketRequest.type = type.typeKey;
-    }
-    if (requestType) {
-      socketRequest.requestType = requestType;
-    }
-    if (hash) {
-      socketRequest.hash = hash;
-    }
-    return Ember.RSVP.resolve(value);
-  };
+function socketResponse(val) {
+  value = val;
 }
 
 
 test('Find Post by ID without options', function() {
   expect(2);
-  socketResponse({ post: [
-    { id: 1, name: 'Socket.io is awesome' }
-  ] });
+
   store.find('post', 1).then(async(function(post) {
     deepEqual(socketRequest, {type: 'post', requestType: 'READ', hash: {id: '1'}},
         'Post READ event socket request should be equal to \n' +
@@ -73,14 +91,7 @@ test('Find Post by ID without options', function() {
 
 test('Find All Posts without options', function() {
   expect(2);
-  socketResponse({
-    meta: {}, payload: {
-      post: [
-        { id: 1, name: 'Socket.io is awesome' },
-        { id: 2, name: 'Ember.js is awesome' }
-      ]
-    }
-  });
+  
   store.find('post').then(async(function(posts) {
     deepEqual(socketRequest, {type: 'post', requestType: 'READ_LIST'},
         'Posts READ_LIST event socket request should be equal to \n' +
@@ -94,9 +105,7 @@ test('Find All Posts without options', function() {
 
 test('Create Post', function() {
   expect(2);
-  socketResponse({ post: [
-    { id: 1, name: 'Socket.io is awesome' }
-  ] });
+
   var post = store.createRecord('post', {
     name: 'Socket.io is awesome'
   });
@@ -121,10 +130,7 @@ test('Create Post', function() {
 
 test('Create Posts', function() {
   expect(2);
-  socketResponse({ post: [
-    { id: 1, name: 'Socket.io is awesome' },
-    { id: 2, name: 'Ember.js is awesome' }
-  ] });
+
   var posts = [
     store.createRecord('post', {
       name: 'Socket.io is awesome'
@@ -163,17 +169,10 @@ test('Create Posts', function() {
 
 test('Update Post', function () {
   expect(2);
-  socketResponse({ post: [
-    { id: 1, name: 'Socket.io is awesome' }
-  ] });
 
   var post = store.find('post', 1);
   Ember.RSVP.resolve(post).then(async(function (post) {
     ok(post.get('isLoaded'), 'post should be loaded correctly');
-
-    socketResponse({ post: [
-      { id: 1, name: 'Javascript is awesome' }
-    ] });
 
     post.set('name', 'Javascript is awesome');
     post.save().then(async(function (post) {
@@ -200,24 +199,12 @@ test('Update Post', function () {
 
 test('Update Posts', function () {
   expect(2);
-  socketResponse({
-    meta: {}, payload: { post: [
-      {id: 1, name: 'Socket.io is awesome'},
-      {id: 2, name: 'Ember.js is awesome'}
-    ]}
-  });
 
   store.find('post').then(async(function (posts) {
     ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
 
     posts.setEach('name', 'Javascript is awesome');
 
-    socketResponse({
-      post: [
-        { id: 1, name: 'Javascript is awesome' },
-        { id: 2, name: 'Javascript is awesome' }
-      ]
-    });
     posts.save().then(async(function (posts) {
       deepEqual(socketRequest, {
         type: 'post',
@@ -240,28 +227,14 @@ test('Update Posts', function () {
     }));
 
   }));
-
 });
 
 test('Delete Post', function () {
-  socketResponse({
-    meta: {}, payload: {
-      post: [
-        {id: 1, name: 'Socket.io is awesome'},
-        {id: 2, name: 'Ember.js is awesome'}
-      ]
-    }
-  });
 
   store.find('post').then(async(function (posts){
     equal(posts.get('length'), 2, 'posts length should be equal 2');
     var post = posts.get('lastObject');
     post.deleteRecord();
-    socketResponse({
-      post: {
-        id: 2
-      }
-    });
 
     post.save().then(async(function (response) {
       deepEqual(socketRequest, {
@@ -302,6 +275,7 @@ test('Delete Posts', function () {
         id: [1, 2]
       }
     });
+
     posts.save().then(async(function (posts) {
       //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST if 
       //TODO: store has a records after delete records
@@ -312,7 +286,7 @@ test('Delete Posts', function () {
           ids: ['1', '2']
         }
       }, 
-        'Posts DELETE_IST event socket request should be equal to \n' +
+        'Posts DELETE_LIST event socket request should be equal to \n' +
         '  {' +
         '\t type: "post", \n' +
         '\t requestType: "DELETE_LIST", \n' +
@@ -326,19 +300,6 @@ test('Delete Posts', function () {
 
 test('Read posts with releations', function () {
   expect(3);
-  socketResponse({
-    meta: {}, payload: {
-      post: [
-        { id: 1, name: 'Javascript is awesome', comments: [1] },
-        { id: 2, name: 'Socket.io is awesome', comments: [] },
-        { id: 3, name: 'Ember.js is awesome', comments: [2] }
-      ],
-      comments: [
-        {id: 1, name: 'This good.'},
-        {id: 2, name: 'And angular.js too.'}
-      ]
-    }
-  });
 
   store.find('post', {include: 'comments'}).then(async(function (posts) {
     equal(posts.get('length'), 3, 'posts length should be equal 3');
@@ -350,3 +311,11 @@ test('Read posts with releations', function () {
       'first comment to last post should be equal "And angular.js too."');
   }));
 });
+
+/*test('Any', function () {
+
+  store.find('post').then(async(function (posts) {
+    console.log(posts.get('firstObject').get('comments').get('firstObject'));
+  }));
+  ok(true, 'true');
+});*/
