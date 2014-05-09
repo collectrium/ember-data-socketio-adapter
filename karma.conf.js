@@ -14,9 +14,9 @@ module.exports = function(karma) {
     ],
 
     logLevel: karma.LOG_ERROR,
-    browsers: ['Chrome'],
-    singleRun: false,
-    autoWatch: true,
+    browsers: ['phantomjs'],
+    singleRun: true,
+    autoWatch: false,
 
     frameworks: ['qunit']
   });

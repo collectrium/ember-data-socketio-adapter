@@ -106,21 +106,33 @@ function _bulkCommit(adapter, store, operation, type, records) {
 
 function _findQuery(adapter, store, type, query, recordArray) {
   var promise = adapter.findQuery(store, type, query, recordArray),
-    serializer = serializerForAdapter(adapter, type),
-    label = "DS: Handle Adapter#findQuery of " + type;
+  serializer = serializerForAdapter(adapter, type),
+  label = "DS: Handle Adapter#findQuery of " + type;
 
   return Promise.cast(promise, label).then(function(adapterPayload) {
     var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
-
     Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-    //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
-    recordArray.load(payload);
-    if (adapterPayload.meta){
-      recordArray.set('_meta', adapterPayload.meta);
-    }
-    return recordArray;
-  }, null, "DS: Extract payload of findQuery " + type);
+        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
+        recordArray.load(payload);
+        if (adapterPayload.meta){
+          recordArray.set('_meta', adapterPayload.meta);
+        }
+        return recordArray;
+      }, null, "DS: Extract payload of findQuery " + type);
 }
+
+function _findMany(adapter, store, type, ids, owner) {
+  var promise = adapter.findMany(store, type, ids, owner),
+  serializer = serializerForAdapter(adapter, type),
+  label = "DS: Handle Adapter#findMany of " + type;
+
+  return Promise.cast(promise, label).then(function(adapterPayload) {
+
+    var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
+    Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+    store.pushMany(type, payload);
+  }, null, "DS: Extract payload of " + type);
+} 
 
 
 var Store = DS.Store.extend({
@@ -162,6 +174,31 @@ var Store = DS.Store.extend({
     }, null, "DS: Store#filter of " + type));
   },
 
+  
+
+  fetchMany: function(records, owner) {
+    if (!records.length) { return; }
+        // Group By Type
+        var recordsByTypeMap = Ember.MapWithDefault.create({
+          defaultValue: function() { return Ember.A(); }
+        });
+
+        forEach(records, function(record) {
+          recordsByTypeMap.get(record.constructor).push(record);
+        });
+        var promises = [];
+        forEach(recordsByTypeMap, function(type, records) {
+          var ids = records.mapProperty('id'),
+          adapter = this.adapterFor(type);
+
+          Ember.assert("You tried to load many records but you have no adapter (for " + type + ")", adapter);
+          Ember.assert("You tried to load many records but your adapter does not implement `findMany`", adapter.findMany);
+          promises.push(_findMany(adapter, this, type, ids, owner));
+        }, this);
+
+        return Ember.RSVP.all(promises);
+      },
+
   flushPendingSave: function() {
     var pending = this._pendingSave.slice();
     this._pendingSave = [];
@@ -175,7 +212,6 @@ var Store = DS.Store.extend({
         'updateRecord'
       ], resolvers, i, j, k;
 
-    console.log(pending);
     forEach(pending, function(tuple) {
       var record = tuple[0], resolver = tuple[1],
         type = record.constructor,

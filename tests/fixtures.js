@@ -2,7 +2,7 @@ window.fixtures = [
   
 ];
 
-window.addFixture = function (request, response) {
+window.addFixture = function (name, request, response) {
   var obj = {};
   if (request.type) {
     obj.type = request.type;
@@ -21,45 +21,46 @@ window.addFixture = function (request, response) {
 };
 
 // Find Post by ID without options
-addFixture({
+addFixture('Find Post by ID = 1', {
   type: 'post',
   requestType: 'READ',
   hash: {id: "1"}
 }, { post: [
-    { id: 1, name: 'Socket.io is awesome' }
+    { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 }
   ] 
 });
 
-addFixture({
+addFixture('Find Post by ID = 2', {
   type: 'post',
   requestType: 'READ',
   hash: {id: "2"}
 }, { post: [
-    { id: 2, name: 'Ember.js is awesome' }
+    { id: 2, name: 'Ember.js is awesome', comments: [] }
   ] 
 });
 
+
 // Find All Posts without options
-addFixture({
+addFixture('Find Posts without options', {
   type: 'post',
   requestType: 'READ_LIST'
 }, {
   meta: {},
   payload: {
     post: [
-      { id: 1, name: 'Socket.io is awesome' },
-      { id: 2, name: 'Ember.js is awesome' }
+      { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 },
+      { id: 2, name: 'Ember.js is awesome', comments: [], author: null }
     ]
   }
 });
 
 // Create Post
-addFixture({
+addFixture('Create Post', {
   type: 'post',
   requestType: 'CREATE',
   hash: {
     post: [
-      { name: 'Socket.io is awesome', comments: [] }
+      { name: 'Socket.io is awesome', comments: [], author: '1' }
     ]
   }
 }, {
@@ -69,29 +70,29 @@ addFixture({
 });
 
 // Create Posts
-addFixture({
+addFixture('Create Posts', {
   type: 'post',
   requestType: 'CREATE_LIST',
   hash: {
     post: [
-      { name: 'Socket.io is awesome', comments: [] },
-      { name: 'Ember.js is awesome', comments: [] }
+      { name: 'Socket.io is awesome', comments: [], author: '1' },
+      { name: 'Ember.js is awesome', comments: [], author: '1' }
     ]
   }
 }, {
   post: [
-    { id: 1, name: 'Socket.io is awesome' },
+    { id: 1, name: 'Socket.io is awesome', author: 1 },
     { id: 2, name: 'Ember.js is awesome' }
   ]
 });
 
 // Update Post
-addFixture({
+addFixture('Update Post', {
   type: 'post',
   requestType: 'UPDATE',
   hash: {
     post: [
-      { id: '1', name: 'Javascript is awesome', comments: []}
+      { id: '1', name: 'Javascript is awesome', comments: [], author: '1' }
     ]
   }
 }, {
@@ -101,24 +102,24 @@ addFixture({
 });
 
 // Update Posts
-addFixture({
+addFixture('Update Posts', {
   type: 'post',
   requestType: 'UPDATE_LIST',
   hash: {
     post: [
-      { id: '1', name: 'Javascript is awesome', comments: [] },
-      { id: '2', name: 'Javascript is awesome', comments: [] }
+      { id: '1', name: 'Javascript is awesome', comments: [], author: "1" },
+      { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
     ]
   }  
 }, {
   post: [
-    { id: 1, name: 'Javascript is awesome', comments: [] },
-    { id: 2, name: 'Javascript is awesome', comments: [] }
+    { id: 1, name: 'Javascript is awesome', comments: [], author: 1 },
+    { id: 2, name: 'Javascript is awesome', comments: [], author: undefined }
   ]  
 });
 
 // Delete Post
-addFixture({
+addFixture('Delete Post', {
   type: 'post',
   requestType: 'DELETE',
   hash: { id: '2' }
@@ -129,7 +130,7 @@ addFixture({
 });
 
 // Delete Posts
-addFixture({
+addFixture('Delete Posts', {
   type: 'post',
   requestType: 'DELETE_LIST',
   hash: {
@@ -142,23 +143,71 @@ addFixture({
 });
 
 // Read Posts with releations
-addFixture({
+addFixture('Read Posts with releations', {
   type: 'post',
   requestType: 'READ_LIST',
   hash: {
-    include: 'comments'
+    include: ['comments', 'author']
   }
 }, {
   meta: {},
   payload: {
     post: [
-      { id: 1, name: 'Javascript is awesome', comments: [1] },
-      { id: 2, name: 'Socket.io is awesome', comments: [] },
-      { id: 3, name: 'Ember.js is awesome', comments: [2] }
+      { id: 1, name: 'Javascript is awesome', comments: [1,2], author: 1 },
+      { id: 2, name: 'Socket.io is awesome', comments: [] }
     ],
     comments: [
-      { id: 1, name: 'This good.' },
-      { id: 2, name: 'And angular.js too.' }
+      { id: 1, name: 'Greet.' },
+      { id: 2, name: 'Nice.' }
+    ],
+    author: [
+      { id: 1, name: 'Test' }
     ]
   }
+});
+
+// Find Comment by ID without options
+addFixture('Find Comments by IDS = [1,2]', {
+  type: 'comment',
+  requestType: 'READ_LIST',
+  hash: {
+    ids: ["1", "2"]
+  }
+}, {
+  payload: {
+    comments: [
+      { id: 1, name: 'Greet.' },
+      { id: 2, name: 'Nice.' }
+    ]
+  }
+});
+
+addFixture('Find Comment by ID = 1', {
+  type: 'comment',
+  requestType: 'READ',
+  hash: {id: "1"}
+}, {
+  comment: [
+    { id: 1, name: 'Greet.' }
+  ]
+});
+
+addFixture('Find Comment by ID = 2', {
+  type: 'comment',
+  requestType: 'READ',
+  hash: {id: "2"}
+}, {
+  comment: [
+    { id: 2, name: 'Nice.' }
+  ]
+});
+
+addFixture('Find Author by ID = 1', {
+  type: 'author',
+  requestType: 'READ',
+  hash: { id: "1" }
+}, {
+  author: [
+    { id: 1, name: 'Test' }
+  ]
 });
