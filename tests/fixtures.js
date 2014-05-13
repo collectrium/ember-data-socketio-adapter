@@ -4,6 +4,7 @@ window.fixtures = [
 
 window.addFixture = function (name, request, response) {
   var obj = {};
+
   if (request.type) {
     obj.type = request.type;
   }
@@ -15,6 +16,7 @@ window.addFixture = function (name, request, response) {
   }
  
   window.fixtures.push({
+    name: name,
     request: obj,
     response: response
   }); 

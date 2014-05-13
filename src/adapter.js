@@ -124,7 +124,6 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
 
    findMany: function (store, type, ids) {
-
     return this.send(type, 'READ_LIST', {ids: ids});
   },
 

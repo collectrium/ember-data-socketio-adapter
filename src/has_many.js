@@ -4,37 +4,35 @@
 
 var get = Ember.get, set = Ember.set, setProperties = Ember.setProperties;
 
-function asyncHasMany(type, options, meta) {
-  return Ember.computed(function(key, value) {
-    var relationship = this._relationships[key],
-    promiseLabel = "DS: Async hasMany " + this + " : " + key;
+// copied from ember-data/lib/system/relationships/has_many.js
+function asyncHasMany(type, options, meta, key) {
+  /*jshint validthis:true */
+  var relationship = this._relationships[key],
+  promiseLabel = "DS: Async hasMany " + this + " : " + key;
 
-    if (!relationship) {
-      var resolver = Ember.RSVP.defer(promiseLabel);
-      relationship = buildRelationship(this, key, options, function(store, data) {
-        var link = data.links && data.links[key];
-        var rel;
-        if (link) {
-          rel = store.findHasMany(this, link, meta, resolver);
-        } else {
-          rel = store.findMany(this, data[key], meta.type, resolver);
-        }
-            // cache the promise so we can use it
-            // when we come back and don't need to rebuild
-            // the relationship.
-            set(rel, 'promise', resolver.promise);
-            return rel;
-          });
-    }
+  if (!relationship) {
+    var resolver = Ember.RSVP.defer(promiseLabel);
+    relationship = buildRelationship(this, key, options, function(store, data) {
+      var link = data.links && data.links[key];
+      var rel;
+      if (link) {
+        rel = store.findHasMany(this, link, meta, resolver);
+      } else {
+        rel = store.findMany(this, data[key], meta.type, resolver);
+      }
+      set(rel, 'promise', resolver.promise);
+      return rel;
+    });
+  }
 
-    var promise = relationship.get('promise').then(function() {
-      return relationship;
-    }, null, "DS: Async hasMany records received");
+  var promise = relationship.get('promise').then(function() {
+    return relationship;
+  }, null, "DS: Async hasMany records received");
 
-    return DS.PromiseArray.create({ promise: promise });
-  }).property('data').meta(meta);
+  return DS.PromiseArray.create({ promise: promise });
 }
 
+// copied from ember-data/lib/system/relationships/has_many.js
 function buildRelationship(record, key, options, callback) {
   var rels = record._relationships;
 
@@ -55,10 +53,6 @@ function hasRelationship(type, options) {
 
   var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
 
-  if (options.async) {
-    return asyncHasMany(type, options, meta);
-  }
-
   return Ember.computed(function(key, value) {
     var records = get(this, 'data')[key],
     isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
@@ -67,26 +61,7 @@ function hasRelationship(type, options) {
     promiseLabel = "DS: Async hasMany " + records + " : " + key;
 
     if (!isRecordsEveryEmpty) {
-      var resolver = Ember.RSVP.defer(promiseLabel);
-          relationship = buildRelationship(this, key, options, function (store, data) {
-        var link = data.links && data.links[key];
-        var rel;
-        if (link) {
-          rel = store.findHasMany(this, link, meta, resolver);
-        } else {
-          var records = data[key];
-          rel = store.findMany(this, records, meta.type, resolver);
-        }
-
-        set(rel, 'promise', resolver.promise);
-        return rel;
-      });
-
-      var promise = relationship.get('promise').then(function () {
-        return relationship;
-      }, null, "DS: Async hasMany records received");
-
-      return DS.PromiseArray.create({ promise: promise });
+      return asyncHasMany.call(this, type, options, meta, key);  
     }
 
     return buildRelationship(this, key, options, function(store, data) {

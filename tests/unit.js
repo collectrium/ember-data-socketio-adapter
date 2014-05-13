@@ -69,11 +69,6 @@ module('unit - Socket Adapter: ', {
   }
 });
 
-function socketResponse(val) {
-  value = val;
-}
-
-
 test('Find Post by ID without options', function() {
   expect(2);
 
@@ -103,8 +98,6 @@ test('Find All Posts without options', function() {
     ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
   }));
 });
-
-
 
 
 test('Create Post', function() {
@@ -172,6 +165,7 @@ test('Create Posts', function() {
   }));
   
 });
+
 
 test('Update Post', function () {
   expect(2);
@@ -264,25 +258,13 @@ test('Delete Post', function () {
 
 test('Delete Posts', function () {
   expect(3);
-  socketResponse({
-    meta: {}, payload: {
-      post: [
-        { id: 1, name: 'Socket.io is awesome' },
-        { id: 2, name: 'Ember.js is awesome' }
-      ]
-    }
-  });
+  
 
   store.find('post').then(async(function (posts) {
     equal(posts.get('length'), 2, 'posts length equal should be equal 2');
     posts.findProperty('id', '1').deleteRecord();
     posts.findProperty('id', '2').deleteRecord();
-    socketResponse({
-      post: {
-        id: [1, 2]
-      }
-    });
-
+    
     posts.save().then(async(function (posts) {
       //TODO: socketRequest type equal UPDATE, but should be equal DELETE_LIST if 
       //TODO: store has a records after delete records
@@ -330,7 +312,7 @@ test('Read Posts with releations', function () {
       view.append();
     });
 
-    setTimeout(async(function () {
+    Ember.run.next(async(function () {
       var name = view.$().text();
       equal(name, 'Test', 'author name should be equal "Test"');
       view.remove();
@@ -339,7 +321,7 @@ test('Read Posts with releations', function () {
   }));
 });
 
-test('Read Post relations (hasMany) after loading', function () {
+test('Read Post with async relations (hasMany)', function () {
   expect(2);
   store.find('post').then(async(function (posts) {
     var comments = posts.get('firstObject.comments');
@@ -367,7 +349,7 @@ test('Read Post relations (hasMany) after loading', function () {
   }));
 });
 
-test('Read Post relations (belongsTo) after loading', function () {
+test('Read Post with async relations (belongs_to)', function () {
   expect(2);
   store.find('post', 1).then(async(function (post) {
     post.get('author').then(async(function (author) {
@@ -385,7 +367,7 @@ test('Read Post relations (belongsTo) after loading', function () {
       view.append();
     });
 
-    setTimeout(async(function () {
+    Ember.run.next(async(function () {
       var name = view.$().text();
       equal(name, 'Test', 'author name should be equal "Test"');
       view.remove();

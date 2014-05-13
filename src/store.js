@@ -124,7 +124,7 @@ function _findQuery(adapter, store, type, query, recordArray) {
 function _findMany(adapter, store, type, ids, owner) {
   var promise = adapter.findMany(store, type, ids, owner),
   serializer = serializerForAdapter(adapter, type),
-  label = "DS: Handle Adapter#findMany of " + type;
+  label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
 
   return Promise.cast(promise, label).then(function(adapterPayload) {
 
@@ -173,31 +173,6 @@ var Store = DS.Store.extend({
       return array;
     }, null, "DS: Store#filter of " + type));
   },
-
-  
-
-  fetchMany: function(records, owner) {
-    if (!records.length) { return; }
-        // Group By Type
-        var recordsByTypeMap = Ember.MapWithDefault.create({
-          defaultValue: function() { return Ember.A(); }
-        });
-
-        forEach(records, function(record) {
-          recordsByTypeMap.get(record.constructor).push(record);
-        });
-        var promises = [];
-        forEach(recordsByTypeMap, function(type, records) {
-          var ids = records.mapProperty('id'),
-          adapter = this.adapterFor(type);
-
-          Ember.assert("You tried to load many records but you have no adapter (for " + type + ")", adapter);
-          Ember.assert("You tried to load many records but your adapter does not implement `findMany`", adapter.findMany);
-          promises.push(_findMany(adapter, this, type, ids, owner));
-        }, this);
-
-        return Ember.RSVP.all(promises);
-      },
 
   flushPendingSave: function() {
     var pending = this._pendingSave.slice();
