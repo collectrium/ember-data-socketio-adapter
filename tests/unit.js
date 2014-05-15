@@ -1,4 +1,4 @@
-var env, store, adapter, Post, Comment, io = {}, socketRequest, value,
+var env, store, adapter, Post, Comment, io = {}, socketRequest,
   forEach = Ember.EnumerableUtils.forEach;
 
 io.connect = function() {

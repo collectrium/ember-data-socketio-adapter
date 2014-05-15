@@ -1,12 +1,5 @@
 var get = Ember.get, set = Ember.set, isNone = Ember.isNone;
 
-function aliasMethod(methodName) {
-  return function() {
-    return this[methodName].apply(this, arguments);
-  };
-}
-
-
 DS.JSONSerializer.reopen({
 
   serializeBelongsTo: function(record, json, relationship) {
