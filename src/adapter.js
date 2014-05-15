@@ -35,18 +35,22 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @param options
    * @returns {Ember.get|*|Object}
    */
-  getConnection: function(root, options) {
+  getConnection: function(type, options) {
+    //TODO: refactor
+    type = type.typeKey || null;
+    var root = type || '/',
+      connections = get(this, 'socketConnections'),
+      socketNS = get(connections, root),
+      address = this.get('socketAddress'),
+      requestsPool = this.get('requestsPool'),
+      store = get(this, 'store');
+
     if (arguments.length === 1) {
       options = {};
     }
-    if (root instanceof Object) {
-      options = root;
-      root = '/';
+    if (root === '/') {
+      options = arguments[0];
     }
-    var connections = get(this, 'socketConnections'),
-      socketNS = get(connections, root),
-      address = this.get('socketAddress'),
-      requestsPool = this.get('requestsPool');
 
     if (!socketNS) {
       address += '/';
@@ -58,12 +62,26 @@ var SocketAdapter = DS.RESTAdapter.extend({
     }
     //TODO: when should be reject promise hmmm?
     socketNS.on('message', function(response) {
-      //TODO: think about push update
       if (response.request_id && requestsPool[response.request_id]) {
         var resolver = requestsPool[response.request_id].resolve;
         delete response.request_id;
         Ember.run(null, resolver, response);
         delete requestsPool[response.request_id];
+      }
+      //Looks like we got push notification
+      //TODO: how to get operation's type
+      /**
+       * Operations (can be singular or multiple):
+       * Update: trigger extractUpdateRecord (single) or extractUpdateRecords (multiple)
+       * Create: trigger extractCreateRecord (single) or extractCreateRecords (multiple)
+       * Delete: trigger extractDeleteRecord (single) or extractDeleteRecords (multiple)
+       */
+      else{
+        //if response contains only ids array it means that
+        if (response.ids){
+
+        }
+        store.pushPayload(response, type);
       }
     });
 
@@ -78,12 +96,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   send: function(type, requestType, hash) {
-    var connection = this.getConnection(type.typeKey),
+    var connection = this.getConnection(type),
       requestsPool = this.get('requestsPool'),
       requestId = this.generateRequestId(),
-      deffered = Ember.RSVP.defer(
-          "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey
-      );
+      deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
     if (!(hash instanceof Object)) {
       hash = {};
     }
