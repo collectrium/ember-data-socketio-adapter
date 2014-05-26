@@ -119,6 +119,18 @@ var SocketAdapter = DS.RESTAdapter.extend({
    *
    * @param store
    * @param type
+   * @param ids
+   * @returns {Ember.RSVP.Promise}
+   */
+
+   findMany: function (store, type, ids) {
+    return this.send(type, 'READ_LIST', {ids: ids});
+  },
+
+  /**
+   *
+   * @param store
+   * @param type
    * @param id
    * @returns {Ember.RSVP.Promise}
    */
