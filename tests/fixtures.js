@@ -45,7 +45,8 @@ addFixture('Find Post by ID = 2', {
 // Find All Posts without options
 addFixture('Find Posts without options', {
   type: 'post',
-  requestType: 'READ_LIST'
+  requestType: 'READ_LIST',
+  hash: {}
 }, {
   meta: {},
   payload: {
