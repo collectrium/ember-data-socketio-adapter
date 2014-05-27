@@ -1,3 +1,5 @@
+var forEach = Ember.EnumerableUtils.forEach;
+
 window.setupStore = function(options) {
   var env = {};
   options = options || {};
@@ -46,4 +48,41 @@ window.async = function(callback, timeout) {
       return callback.apply(this, args);
     });
   };
+};
+window.io = {};
+window.io.connect = function(address, options) {
+  //TOOD: create typeFromAddress and addressFromType functions
+  var type = address.split('/').reverse()[1];
+  return Ember.Object.createWithMixins(Ember.Evented, {
+
+    /**
+     * Tests will emit events only for resource namespaces, so requestType and type are always set,
+     * hash can be an empty object
+     *
+     * @param requestType
+     * @param hash
+     */
+    emit: function(requestType, hash) {
+      var fix,
+        requestId = hash.request_id;
+      delete hash.request_id;
+      socketRequest = {};
+      socketRequest.type = type;
+      socketRequest.requestType = requestType;
+      socketRequest.hash = hash;
+      forEach(fixtures, function(fixture) {
+        if (JSON.stringify(fixture.request) === JSON.stringify(socketRequest)) {
+          //return fixture deep copy, to save fixture data across all tests
+          fix = JSON.stringify(fixture.response);
+          fix = JSON.parse(fix);
+        }
+      });
+      if (fix) {
+        fix.request_id = requestId;
+        this.trigger('message', fix);
+      } else {
+        console.error('fixture not found', socketRequest);
+      }
+    }
+  });
 };
