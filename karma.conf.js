@@ -8,6 +8,7 @@ module.exports = function(karma) {
       '../vendor/ember/ember.js',
       '../vendor/ember-data/ember-data.js',
       '../dist/socket-adapter.js',
+      "fixtures.js",
       "helper.js",
       "unit.js"
     ],

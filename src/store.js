@@ -105,21 +105,33 @@ function _bulkCommit(adapter, store, operation, type, records) {
 
 function _findQuery(adapter, store, type, query, recordArray) {
   var promise = adapter.findQuery(store, type, query, recordArray),
-    serializer = serializerForAdapter(adapter, type),
-    label = "DS: Handle Adapter#findQuery of " + type;
+      serializer = serializerForAdapter(adapter, type),
+      label = "DS: Handle Adapter#findQuery of " + type;
 
   return Promise.cast(promise, label).then(function(adapterPayload) {
     var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
-
     Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-    //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
-    recordArray.load(payload);
-    if (adapterPayload.meta){
-      recordArray.set('_meta', adapterPayload.meta);
-    }
-    return recordArray;
-  }, null, "DS: Extract payload of findQuery " + type);
+        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
+        recordArray.load(payload);
+        if (adapterPayload.meta){
+          recordArray.set('_meta', adapterPayload.meta);
+        }
+        return recordArray;
+      }, null, "DS: Extract payload of findQuery " + type);
 }
+
+function _findMany(adapter, store, type, ids, owner) {
+  var promise = adapter.findMany(store, type, ids, owner),
+      serializer = serializerForAdapter(adapter, type),
+      label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
+
+  return Promise.cast(promise, label).then(function(adapterPayload) {
+
+    var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
+    Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+    store.pushMany(type, payload);
+  }, null, "DS: Extract payload of " + type);
+} 
 
 
 var Store = DS.Store.extend({
