@@ -9,7 +9,7 @@
   "main": "build/ember-data-socket-adapter.js",
   "dependencies": {
     "ember": ">=1.4.0",
-    "ember-data": "~1.0.0-beta.7"
+    "ember-data": "~1.0.0-beta.8"
   },
   "keywords": [
     "ember",

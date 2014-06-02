@@ -63,6 +63,19 @@ test('Find All Posts without options', function() {
   }));
 });
 
+test('Find Posts with meta', function() {
+  expect(2);
+  var query1, query2;
+  store.findQuery('post', {limit: 1}).then(async(function(posts) {
+    query1 = posts;
+    store.findQuery('post', {limit: 2}).then(async(function (posts) {
+      query2 = posts;
+
+      equal(query1.get('meta.total'), 1, 'meta.total in first query should be equal 1');
+      equal(query2.get('meta.total'), 2, 'meta.total in first query should be equal 2');
+    }));
+  }));
+});
 
 test('Create Post', function() {
   expect(2);
@@ -127,131 +140,123 @@ test('Create Posts', function() {
       ok(posts.isEvery('isLoaded', true), 'posts should be loaded in store correctly');
     }));
   }));
-
 });
 
-//TODO: use pushPayload instead of find
-test('Update Post', function() {
-  expect(2);
+test('Updat Post', function() {
+  expect(1);
 
-  var post = store.find('post', 1);
-  Ember.RSVP.resolve(post).then(async(function(post) {
-    ok(post.get('isLoaded'), 'post should be loaded correctly');
+  store.pushPayload('post', getFixture('Find Post by ID = 1'));
+  var post = store.getById('post', 1);
 
-    post.set('name', 'Javascript is awesome');
-    post.save().then(async(function(post) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'UPDATE',
-          hash: { post: [
-            { id: '1', name: 'Javascript is awesome', comments: [], author: '1'}
-          ]
-          }
-        },
-          'Post UPDATE event socket request should be equal to \n' +
-          '  {' +
-          '\t type: "post", \n' +
-          '\t requestType: "UPDATE", \n' +
-          '\t hash: { post: [ \n' +
-          '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
-          '\t ]}\n' +
-          '  }'
-      );
-    }));
+  post.set('name', 'Javascript is awesome');
+  post.save().then(async(function(post) {
+    deepEqual(socketRequest, {
+      type: 'post',
+      requestType: 'UPDATE',
+      hash: { post: [
+        { id: '1', name: 'Javascript is awesome', comments: [], author: '1'}
+        ]
+      }
+    },
+    'Post UPDATE event socket request should be equal to \n' +
+    '  {' +
+    '\t type: "post", \n' +
+    '\t requestType: "UPDATE", \n' +
+    '\t hash: { post: [ \n' +
+    '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
+    '\t ]}\n' +
+    '  }'
+    );
   }));
 });
 
-//TODO: use pushPayload instead of find
 test('Update Posts', function() {
-  expect(2);
+  expect(1);
 
-  store.find('post').then(async(function(posts) {
-    ok(posts.get('isLoaded'), 'posts should be loaded in store correctly');
+  store.pushPayload('post', getFixture('Find Posts without options').payload);
 
-    posts.setEach('name', 'Javascript is awesome');
+  var posts = store.all('post');
 
-    posts.save().then(async(function(posts) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'UPDATE_LIST',
-          hash: { post: [
-            { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
-            { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
-          ]}
-        },
-          'Post UPDATE_LIST event socket request should be equal to \n' +
-          '  {' +
-          '\t type: "post", \n' +
-          '\t requestType: "UPDATE_LIST", \n' +
-          '\t hash: { post: [ \n' +
-          '\t\t { id: "1", name: "Javascript is awesome", comments: [], author: "1" } \n' +
-          '\t\t { id: "2", name: "Javascript is awesome", comments: [], author: undefined } \n' +
-          '\t ]}\n' +
-          '  }'
+  posts.setEach('name', 'Javascript is awesome');
+
+  posts.save().then(async(function(posts) {
+    deepEqual(socketRequest, {
+      type: 'post',
+      requestType: 'UPDATE_LIST',
+      hash: { post: [
+        { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
+        { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
+        ]}
+      },
+      'Post UPDATE_LIST event socket request should be equal to \n' +
+      '  {' +
+      '\t type: "post", \n' +
+      '\t requestType: "UPDATE_LIST", \n' +
+      '\t hash: { post: [ \n' +
+      '\t\t { id: "1", name: "Javascript is awesome", comments: [], author: "1" } \n' +
+      '\t\t { id: "2", name: "Javascript is awesome", comments: [], author: undefined } \n' +
+      '\t ]}\n' +
+      '  }'
       );
-    }));
-
   }));
-
 });
 
 //TODO: use pushPayload instead of find
 test('Delete Post', function() {
+  store.pushPayload('post', getFixture('Find Posts without options').payload);
+  var posts = store.all('post');
 
-  store.find('post').then(async(function(posts) {
-    equal(posts.get('length'), 2, 'posts length should be equal 2');
-    var post = posts.get('lastObject');
-    post.deleteRecord();
+  var post = posts.get('lastObject');
+  post.deleteRecord();
 
-    post.save().then(async(function(response) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'DELETE',
-          hash: { id: '2' }
-        },
-          'Post DELETE event socket request should be equal to \n' +
-          '  {' +
-          '\t type: "post", \n' +
-          '\t requestType: "DELETE", \n' +
-          '\t hash: { id: "2" }\n' +
-          '\t ]}\n' +
-          '  }'
-      );
-      equal(response.get('id'), 2, 'post id should be equal 2');
-    }));
+  post.save().then(async(function(response) {
+    deepEqual(socketRequest, {
+      type: 'post',
+      requestType: 'DELETE',
+      hash: { id: '2' }
+    },
+    'Post DELETE event socket request should be equal to \n' +
+    '  {' +
+    '\t type: "post", \n' +
+    '\t requestType: "DELETE", \n' +
+    '\t hash: { id: "2" }\n' +
+    '\t ]}\n' +
+    '  }'
+    );
+    equal(response.get('id'), 2, 'post id should be equal 2');
   }));
+
 });
 
-//TODO: use pushPayload instead of find
-test('Delete Posts', function() {
-  expect(3);
+  test('Delete Posts', function() {
+  expect(2);
 
+  store.pushPayload('post', getFixture('Find Posts without options').payload);
+  var posts = store.all('post');
 
-  store.find('post').then(async(function(posts) {
-    equal(posts.get('length'), 2, 'posts length equal should be equal 2');
-    posts.findProperty('id', '1').deleteRecord();
-    posts.findProperty('id', '2').deleteRecord();
+  posts.findProperty('id', '1').deleteRecord();
+  posts.findProperty('id', '2').deleteRecord();
 
-    posts.save().then(async(function(posts) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'DELETE_LIST',
-          hash: {
-            ids: ['1', '2']
-          }
-        },
-          'Posts DELETE_LIST event socket request should be equal to \n' +
-          '  {' +
-          '\t type: "post", \n' +
-          '\t requestType: "DELETE_LIST", \n' +
-          '\t hash: { ids: ["1", "2"] } \n' +
-          '\t ]} \n' +
-          '  }'
-      );
+  posts.save().then(async(function(posts) {
+    deepEqual(socketRequest, {
+      type: 'post',
+      requestType: 'DELETE_LIST',
+      hash: {
+        ids: ['1', '2']
+      }
+    },
+    'Posts DELETE_LIST event socket request should be equal to \n' +
+    '  {' +
+    '\t type: "post", \n' +
+    '\t requestType: "DELETE_LIST", \n' +
+    '\t hash: { ids: ["1", "2"] } \n' +
+    '\t ]} \n' +
+    '  }'
+    );
 
-      equal(posts.isEvery('isDeleted', true), true, 'every post should be deleted');
-    }));
+    equal(posts.isEvery('isDeleted', true), true, 'every post should be deleted');
   }));
+  
 });
 
 test('Read Posts with releations', function() {
@@ -288,7 +293,9 @@ test('Read Posts with releations', function() {
 
 test('Read Post with async relations (hasMany)', function() {
   expect(2);
-  store.find('post').then(async(function(posts) {
+  store.pushPayload('post', getFixture('Find Posts without options').payload);
+
+  var posts = store.all('post');
     var comments = posts.get('firstObject.comments');
     comments.then(async(function(response) {
       deepEqual(socketRequest, {
@@ -310,43 +317,42 @@ test('Read Post with async relations (hasMany)', function() {
       var firstCommentName = response.get('firstObject').get('name');
       equal(firstCommentName, 'Greet.', 'first comment should be equal "Greet."');
 
-    }));
   }));
 });
 
 test('Read Post with async relations (belongs_to)', function() {
   expect(2);
-  store.find('post', 1).then(async(function(post) {
-    post.get('author').then(async(function(author) {
-      equal(author.get('name'), 'Test', 'author name sholud be equal "Test"');
-    }));
+  store.pushPayload('post', getFixture('Find Post by ID = 1')); 
+  var post = store.getById('post', 1); 
 
-    var view;
-    Ember.run(function() {
+  post.get('author').then(async(function(author) {
+    equal(author.get('name'), 'Test', 'author name sholud be equal "Test"');
+  }));
 
-      view = Ember.View.create({
-        template: Em.Handlebars.compile('{{view.content.author.name}}'),
-        content: post
-      });
+  var view;
+  Ember.run(function() {
 
-      view.append();
+    view = Ember.View.create({
+      template: Em.Handlebars.compile('{{view.content.author.name}}'),
+      content: post
     });
 
-    Ember.run.next(async(function() {
-      var name = view.$().text();
-      equal(name, 'Test', 'author name should be equal "Test"');
-      view.remove();
-    }));
+    view.append();
+  });
+
+  Ember.run.next(async(function() {
+    var name = view.$().text();
+    equal(name, 'Test', 'author name should be equal "Test"');
+    view.remove();
   }));
 });
 
 test('Create Posts from Server\'s PUSH', function() {
-  expect(2);
+  expect(1);
+
   var tmpPost = store.createRecord('post'),
     type = tmpPost.constructor,
     socketNS = adapter.getConnection(type),
-    postFromStore1,
-    postFromStore2,
     serverPUSH = {
       payload: {
         post: [
@@ -355,8 +361,47 @@ test('Create Posts from Server\'s PUSH', function() {
         ]
       }};
   socketNS.trigger('message', serverPUSH);
-  postFromStore1 = store.recordForId('post', 1);
-  postFromStore2 = store.recordForId('post', 2);
-  ok(postFromStore1.get('isLoaded'), 'Post #1 should be loaded from store correctly');
-  ok(postFromStore2.get('isLoaded'), 'Post #2 should be loaded from store correctly');
+
+  var posts = store.all('post');
+  ok(posts.isEvery('isLoaded', true), 'All posts should be loaded from store correctly');
+});
+
+test('Delete Posts from Server\'s PUSH', function () {
+  var socketNS = adapter.getConnection(store.modelFor('post')),
+      posts;
+  store.pushPayload('post', getFixture('Find Posts without options').payload);
+
+  serverPUSH = {
+        ids: [1, 2]
+  };
+
+  socketNS.trigger('message', serverPUSH);
+
+  posts = store.all('post');
+  ok(posts.isEvery('isDeleted', true), 'All Posts should be deleted');
+});
+
+test('Filtered Records should be contains metadata', function () {
+  expect(1);
+
+  store.filter('post', {limit: 2}, function (post) {
+    return true;
+  }).then(async(function (posts) {
+    ok(posts.get('meta'), 'Records should be contains metadata');
+  }));
+});
+
+test('Filterd Records should be added in store correctly', function () {
+  expect(2);
+
+  store.filter('post', {limit: 1}, function (post) {
+    if (post.get('name') === 'Socket.io is awesome') {
+      return true;
+    } 
+  }).then(async(function (posts) {
+    ok(posts.get('length'), 1, 'Posts Length should be equal 1');
+    store.find('post', 3).then(async(function (post) {
+      ok(posts.get('length'), 2, 'Post should be added in store correctly');
+    }));
+  }));
 });

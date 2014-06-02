@@ -111,11 +111,8 @@ function _findQuery(adapter, store, type, query, recordArray) {
   return Promise.cast(promise, label).then(function(adapterPayload) {
     var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
     Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
+
         recordArray.load(payload);
-        if (adapterPayload.meta){
-          recordArray.set('_meta', adapterPayload.meta);
-        }
         return recordArray;
       }, null, "DS: Extract payload of findQuery " + type);
 }
@@ -158,6 +155,7 @@ var Store = DS.Store.extend({
     return promiseArray(_findQuery(adapter, this, type, query, array));
   },
   filter: function(type, query, filter) {
+    //debugger;
     var promise;
 
     // allow an optional server query
@@ -174,10 +172,10 @@ var Store = DS.Store.extend({
     promise = promise || Promise.cast(array);
 
     return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
-      var meta = adapterPopulatedRecordArray.get('_meta');
+      var meta = adapterPopulatedRecordArray.meta;
       if (meta){
         //TODO: maybe we should merge meta from server and not override it
-        array.set('_meta', meta);
+        array.set('meta', meta);
       }
       return array;
     }, null, "DS: Store#filter of " + type));

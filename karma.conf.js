@@ -14,7 +14,7 @@ module.exports = function(karma) {
     ],
 
     logLevel: karma.LOG_ERROR,
-    browsers: ['PhantomJS'],
+    browsers: ['Chrome'],
     singleRun: true,
     autoWatch: false,
 

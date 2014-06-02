@@ -25,7 +25,6 @@ window.setupStore = function(options) {
   env.restSerializer = container.lookup('serializer:-rest');
   env.store = container.lookup('store:main');
   env.adapter = env.store.get('defaultAdapter');
-
   return env;
 };
 

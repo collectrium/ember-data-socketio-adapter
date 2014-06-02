@@ -73,11 +73,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
             //if response contains only ids array it means that we receive DELETE
             if (response.ids) {
               //remove all records from store without sending DELETE requests
-              store.findByIds(type, response.ids).then(function(records) {
-                forEach(records, function(record) {
+                forEach(response.ids, function (id) {
+                  var record = store.getById(type, id);
                   store.unloadRecord(record);
                 });
-              });
             }
             //we receive CREATE or UPDATE, ember-data will manage data itself
             else {
