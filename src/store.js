@@ -155,7 +155,6 @@ var Store = DS.Store.extend({
     return promiseArray(_findQuery(adapter, this, type, query, array));
   },
   filter: function(type, query, filter) {
-    //debugger;
     var promise;
 
     // allow an optional server query
