@@ -217,7 +217,7 @@ addFixture('Read Posts with releations', {
     include: ['comments', 'author']
   }
 }, {
-  meta: {test: 1},
+  meta: {total: 2},
   payload: {
     post: [
       { id: 1, name: 'Javascript is awesome', comments: [1,2], author: 1 },
