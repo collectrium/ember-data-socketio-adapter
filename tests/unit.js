@@ -405,3 +405,30 @@ test('Filterd Records should be added in store correctly', function () {
     }));
   }));
 });
+
+test('Response Validation should be work correctly', function () {
+  expect(1);
+
+  store.findQuery('post', {id:1 , error: 'error'}).then(function (response) {
+  }, async(function (err) {
+    deepEqual(err, {
+      error: {
+        code: 100,
+        message: 'Server error'
+      }
+    }, 'Error Object should be valid');
+  }));
+});
+
+test('PUSH Message Validation should be correctly', function () {
+  expect(1);
+
+  var socketNS = adapter.getConnection(store.modelFor('post'));
+  serverPUSH = {
+    error: 'Server error'
+  };
+
+  socketNS.trigger('message', serverPUSH);
+
+  ok(true, true);
+});

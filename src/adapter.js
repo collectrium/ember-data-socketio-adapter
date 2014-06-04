@@ -29,6 +29,38 @@ var SocketAdapter = DS.RESTAdapter.extend({
       );
   },
 
+
+  /**
+   *
+   * @param request
+   * @returns {bool}
+   */
+  validateResponse: function (response) {
+    var errorObject = {
+      error: {
+        code: 100,
+        message: null
+      }
+    };
+
+    if (response.hasOwnProperty('error')) {
+      errorObject.error.message = response.error;
+      if (response.hasOwnProperty('request_id')) {
+        errorObject.error.request_id = response.request_id;
+      }
+      return errorObject;
+    }
+
+    if (response.hasOwnProperty('request_id')) {
+      return true; 
+    } else {
+      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+        return errorObject;
+      }
+      return true;
+    }
+  },
+
   /**
    *
    * @param type
@@ -36,7 +68,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.get|*|Object}
    */
   getConnection: function(type, options) {
-    var store = type.typeKey && type.store;
+    var store = type.typeKey && type.store,
+        scope = this;
     type = type.typeKey;
     var connections = get(this, 'socketConnections'),
       socketNS = type && get(connections, type),
@@ -59,6 +92,21 @@ var SocketAdapter = DS.RESTAdapter.extend({
       if (type) {
         //TODO: when should be reject promise hmmm?
         socketNS.on('message', function(response) {
+           
+          var responseValid = scope.validateResponse(response);
+
+          if (responseValid.hasOwnProperty('error')) {
+            if (responseValid.error.request_id) {
+              var reject = requestsPool[response.request_id].reject;
+              if (reject) {
+                delete responseValid.error.request_id;
+                delete requestsPool[responseValid.error.request_id];
+                Ember.run(null, reject, responseValid);
+              }
+              return;
+            }
+          }
+
           if (response.request_id && requestsPool[response.request_id]) {
             var resolver = requestsPool[response.request_id].resolve;
             delete response.request_id;
@@ -80,7 +128,9 @@ var SocketAdapter = DS.RESTAdapter.extend({
             }
             //we receive CREATE or UPDATE, ember-data will manage data itself
             else {
-              store.pushPayload(type, response.payload);
+              if (response.hasOwnProperty('payload')) {
+                store.pushPayload(type, response.payload);
+              }
             }
           }
         });

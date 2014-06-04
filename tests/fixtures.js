@@ -278,3 +278,11 @@ addFixture('Find Author by ID = 1', {
     { id: 1, name: 'Test' }
   ]
 });
+
+addFixture('Error message', {
+  type: 'post',
+  requestType: 'READ_LIST',
+  hash: { id: 1, error: "error" }
+}, {
+  error: 'Server error'
+});
