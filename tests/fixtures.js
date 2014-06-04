@@ -2,7 +2,19 @@ window.fixtures = [
   
 ];
 
-window.addFixture = function (name, request, response) {
+window.getFixture = function(name) {
+  var fix;
+
+  fixtures.forEach(function (fixture) {
+    if (fixture.name === name) {
+      fix = fixture.response;
+    }
+  });
+  fix = JSON.stringify(fix);
+  return JSON.parse(fix);
+}
+
+window.addFixture = function(name, request, response) {
   var obj = {};
 
   if (request.type) {
@@ -32,6 +44,7 @@ addFixture('Find Post by ID = 1', {
   ] 
 });
 
+
 addFixture('Find Post by ID = 2', {
   type: 'post',
   requestType: 'READ',
@@ -41,13 +54,65 @@ addFixture('Find Post by ID = 2', {
   ] 
 });
 
+addFixture('Find Post by ID = 3', {
+  type: 'post',
+  requestType: 'READ',
+  hash: {id: "3"}
+}, { post: [
+    { id: 3, name: 'Socket.io is awesome', comments: [] }
+  ] 
+});
 
 // Find All Posts without options
 addFixture('Find Posts without options', {
   type: 'post',
-  requestType: 'READ_LIST'
+  requestType: 'READ_LIST',
+  hash: {}
 }, {
   meta: {},
+  payload: {
+    post: [
+      { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 },
+      { id: 2, name: 'Ember.js is awesome', comments: [], author: null }
+    ]
+  }
+});
+
+addFixture('Find Posts with options {limit: 1}', {
+  type: 'post',
+  requestType: 'READ_LIST',
+  hash: {limit: 1}
+}, {
+  meta: {total: 1},
+  payload: {
+    post: [
+      { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 }
+    ]
+  }
+});
+
+addFixture('Find Posts with options {author: 1, limit: 1},', {
+  type: 'post',
+  requestType: 'READ_LIST',
+  hash: {
+    author: 1,
+    limit: 1
+  }
+}, {
+  meta: {total: 1},
+  payload: {
+    post: [
+      { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 }
+    ]
+  }
+});
+
+addFixture('Find Posts with options {limit: 2}', {
+  type: 'post',
+  requestType: 'READ_LIST',
+  hash: {limit: 2}
+}, {
+  meta: {total: 2},
   payload: {
     post: [
       { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 },
@@ -152,7 +217,7 @@ addFixture('Read Posts with releations', {
     include: ['comments', 'author']
   }
 }, {
-  meta: {},
+  meta: {total: 2},
   payload: {
     post: [
       { id: 1, name: 'Javascript is awesome', comments: [1,2], author: 1 },
@@ -212,4 +277,12 @@ addFixture('Find Author by ID = 1', {
   author: [
     { id: 1, name: 'Test' }
   ]
+});
+
+addFixture('Error message', {
+  type: 'post',
+  requestType: 'READ_LIST',
+  hash: { id: 1, error: "error" }
+}, {
+  error: 'Server error'
 });

@@ -29,44 +29,110 @@ var SocketAdapter = DS.RESTAdapter.extend({
       );
   },
 
+
   /**
    *
-   * @param root
+   * @param request
+   * @returns {bool}
+   */
+  validateResponse: function (response) {
+    var validationResult = Ember.Object.create({
+      valid: true
+    });
+
+    if (response.hasOwnProperty('error')) {
+      validationResult.set('message', response.error);
+      if (response.hasOwnProperty('request_id')) {
+        validationResult.set('request_id', response.request_id);
+      }
+      validationResult.set('valid', false);
+      return validationResult;
+    }
+
+    if (!response.hasOwnProperty('request_id')) {
+      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+        validationResult.set('valid', false);
+        return validationResult;
+      }
+    }
+    return validationResult;
+  },
+
+  /**
+   *
+   * @param type
    * @param options
    * @returns {Ember.get|*|Object}
    */
-  getConnection: function(root, options) {
+  getConnection: function(type, options) {
+    var store = type.typeKey && type.store,
+        scope = this;
+    type = type.typeKey;
+    var connections = get(this, 'socketConnections'),
+      socketNS = type && get(connections, type),
+      address = this.get('socketAddress') + '/',
+      requestsPool = this.get('requestsPool');
+
     if (arguments.length === 1) {
       options = {};
     }
-    if (root instanceof Object) {
-      options = root;
-      root = '/';
+    if (!type) {
+      options = arguments[0];
     }
-    var connections = get(this, 'socketConnections'),
-      socketNS = get(connections, root),
-      address = this.get('socketAddress'),
-      requestsPool = this.get('requestsPool');
 
+    //if we establish connection for the first time
     if (!socketNS) {
-      address += '/';
-      if (root !== '/') {
-        address = address + root + '/';
+      if (type) {
+        address = address + type + '/';
       }
       socketNS = io.connect(address, options);
-      set(connections, root, socketNS);
-    }
-    //TODO: when should be reject promise hmmm?
-    socketNS.on('message', function(response) {
-      //TODO: think about push update
-      if (response.request_id && requestsPool[response.request_id]) {
-        var resolver = requestsPool[response.request_id].resolve;
-        delete response.request_id;
-        Ember.run(null, resolver, response);
-        delete requestsPool[response.request_id];
-      }
-    });
+      if (type) {
+        //TODO: when should be reject promise hmmm?
+        socketNS.on('message', function(response) {
+           
+          var responseValid = scope.validateResponse(response);
 
+          if (!responseValid.valid) {
+            if (responseValid.request_id && requestsPool[response.request_id]) {
+              var reject = requestsPool[response.request_id].reject;
+              delete responseValid.valid;
+              delete responseValid.request_id;
+              delete requestsPool[responseValid.request_id];
+              Ember.run(null, reject, responseValid);
+            }
+          } else {
+
+            if (response.request_id && requestsPool[response.request_id]) {
+              var resolver = requestsPool[response.request_id].resolve;
+              delete response.request_id;
+              Ember.run(null, resolver, response);
+              delete requestsPool[response.request_id];
+            }
+            /**
+             * Handling PUSH notifications
+             * Operations can be only multiple
+             */
+            else {
+              //if response contains only ids array it means that we receive DELETE
+              if (response.ids) {
+                //remove all records from store without sending DELETE requests
+                  forEach(response.ids, function (id) {
+                    var record = store.getById(type, id);
+                    store.unloadRecord(record);
+                  });
+              }
+              //we receive CREATE or UPDATE, ember-data will manage data itself
+              else {
+                if (response.hasOwnProperty('payload')) {
+                  store.pushPayload(type, response.payload);
+                }
+              }
+            }
+          }
+        });
+        set(connections, type, socketNS);
+      }
+    }
     return socketNS;
   },
 
@@ -78,12 +144,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   send: function(type, requestType, hash) {
-    var connection = this.getConnection(type.typeKey),
+    var connection = this.getConnection(type),
       requestsPool = this.get('requestsPool'),
       requestId = this.generateRequestId(),
-      deffered = Ember.RSVP.defer(
-          "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey
-      );
+      deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
     if (!(hash instanceof Object)) {
       hash = {};
     }
@@ -123,7 +187,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
 
-   findMany: function (store, type, ids) {
+  findMany: function(store, type, ids) {
     return this.send(type, 'READ_LIST', {ids: ids});
   },
 

@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.13
-// 9307fee (2014-05-02 16:06:55 +0300)
+// v0.1.16
+// 7832245 (2014-06-03 15:06:48 +0300)
 
 
 (function(global) {
@@ -110,42 +110,62 @@ define("socket-adapter/adapter",
 
       /**
        *
-       * @param root
+       * @param type
        * @param options
        * @returns {Ember.get|*|Object}
        */
-      getConnection: function(root, options) {
+      getConnection: function(type, options) {
+        var store = type.typeKey && type.store;
+        type = type.typeKey;
+        var connections = get(this, 'socketConnections'),
+          socketNS = type && get(connections, type),
+          address = this.get('socketAddress') + '/',
+          requestsPool = this.get('requestsPool');
+
         if (arguments.length === 1) {
           options = {};
         }
-        if (root instanceof Object) {
-          options = root;
-          root = '/';
+        if (!type) {
+          options = arguments[0];
         }
-        var connections = get(this, 'socketConnections'),
-          socketNS = get(connections, root),
-          address = this.get('socketAddress'),
-          requestsPool = this.get('requestsPool');
 
+        //if we establish connection for the first time
         if (!socketNS) {
-          address += '/';
-          if (root !== '/') {
-            address = address + root + '/';
+          if (type) {
+            address = address + type + '/';
           }
           socketNS = io.connect(address, options);
-          set(connections, root, socketNS);
-        }
-        //TODO: when should be reject promise hmmm?
-        socketNS.on('message', function(response) {
-          //TODO: think about push update
-          if (response.request_id && requestsPool[response.request_id]) {
-            var resolver = requestsPool[response.request_id].resolve;
-            delete response.request_id;
-            Ember.run(null, resolver, response);
-            delete requestsPool[response.request_id];
+          if (type) {
+            //TODO: when should be reject promise hmmm?
+            socketNS.on('message', function(response) {
+              if (response.request_id && requestsPool[response.request_id]) {
+                var resolver = requestsPool[response.request_id].resolve;
+                delete response.request_id;
+                Ember.run(null, resolver, response);
+                delete requestsPool[response.request_id];
+              }
+              /**
+               * Handling PUSH notifications
+               * Operations can be only multiple
+               */
+              else {
+                //if response contains only ids array it means that we receive DELETE
+                if (response.ids) {
+                  //remove all records from store without sending DELETE requests
+                    forEach(response.ids, function (id) {
+                      var record = store.getById(type, id);
+                      store.unloadRecord(record);
+                    });
+                }
+                //we receive CREATE or UPDATE, ember-data will manage data itself
+                else {
+                  store.pushPayload(type, response.payload);
+                }
+              }
+            });
+            set(connections, type, socketNS);
           }
-        });
-
+        }
         return socketNS;
       },
 
@@ -157,12 +177,10 @@ define("socket-adapter/adapter",
        * @returns {Ember.RSVP.Promise}
        */
       send: function(type, requestType, hash) {
-        var connection = this.getConnection(type.typeKey),
+        var connection = this.getConnection(type),
           requestsPool = this.get('requestsPool'),
           requestId = this.generateRequestId(),
-          deffered = Ember.RSVP.defer(
-              "DS: SocketAdapter#emit " + requestType + " to " + type.typeKey
-          );
+          deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
         if (!(hash instanceof Object)) {
           hash = {};
         }
@@ -192,6 +210,18 @@ define("socket-adapter/adapter",
        */
       findQuery: function(store, type, query) {
         return this.send(type, 'READ_LIST', query);
+      },
+
+      /**
+       *
+       * @param store
+       * @param type
+       * @param ids
+       * @returns {Ember.RSVP.Promise}
+       */
+
+      findMany: function(store, type, ids) {
+        return this.send(type, 'READ_LIST', {ids: ids});
       },
 
       /**
@@ -318,15 +348,212 @@ define("socket-adapter/adapter",
 
     __exports__["default"] = SocketAdapter;
   });
-define("socket-adapter/main", 
-  ["socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+define("socket-adapter/belongs_to", 
+  ["exports"],
+  function(__exports__) {
     "use strict";
-    var serializer = __dependency1__["default"];
-    var adapter = __dependency2__["default"];
-    var store = __dependency3__["default"];
+    var get = Ember.get, set = Ember.set,
+        isNone = Ember.isNone;
 
-    var VERSION = "0.1.13";
+    var Promise = Ember.RSVP.Promise;
+
+    // copied from ember-data//lib/system/relationships/belongs_to.js
+    function asyncBelongsTo(type, options, meta) {
+      return Ember.computed('data', function(key, value) {
+        var data = get(this, 'data'),
+            store = get(this, 'store'),
+            promiseLabel = "DS: Async belongsTo " + this + " : " + key,
+            promise;
+
+        if (arguments.length === 2) {
+          Ember.assert("You can only add a '" + type + "' record to this relationship", !value || value instanceof store.modelFor(type));
+          return value === undefined ? null : DS.PromiseObject.create({
+            promise: Promise.cast(value, promiseLabel)
+          });
+        }
+
+        var link = data.links && data.links[key],
+            belongsTo = data[key];
+
+        if(!isNone(belongsTo)) {
+          promise = store.fetchRecord(belongsTo) || Promise.cast(belongsTo, promiseLabel);
+          return DS.PromiseObject.create({
+            promise: promise
+          });
+        } else if (link) {
+          promise = store.findBelongsTo(this, link, meta);
+          return DS.PromiseObject.create({
+            promise: promise
+          });
+        } else {
+          return null;
+        }
+      }).meta(meta);
+    }
+
+    DS.belongsTo = function (type, options) {
+      if (typeof type === 'object') {
+        options = type;
+        type = undefined;
+      } else {
+        Ember.assert("The first argument DS.belongsTo must be a model type or string, like DS.belongsTo(App.Person)", !!type && (typeof type === 'string' || Model.detect(type)));
+      }
+
+      options = options || {};
+
+      var meta = {
+        type: type,
+        isRelationship: true,
+        options: options,
+        kind: 'belongsTo'
+      };
+
+      return asyncBelongsTo(type, options, meta);
+    };
+
+
+    __exports__["default"] = DS.belongsTo;
+  });
+define("socket-adapter/has_many", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    /**
+      @module ember-data
+    */
+
+    var get = Ember.get, set = Ember.set, setProperties = Ember.setProperties;
+
+    // copied from ember-data/lib/system/relationships/has_many.js
+    function asyncHasMany(type, options, meta, key) {
+      /*jshint validthis:true */
+      var relationship = this._relationships[key],
+      promiseLabel = "DS: Async hasMany " + this + " : " + key;
+
+      if (!relationship) {
+        var resolver = Ember.RSVP.defer(promiseLabel);
+        relationship = buildRelationship(this, key, options, function(store, data) {
+          var link = data.links && data.links[key];
+          var rel;
+          if (link) {
+            rel = store.findHasMany(this, link, meta, resolver);
+          } else {
+            rel = store.findMany(this, data[key], meta.type, resolver);
+          }
+          set(rel, 'promise', resolver.promise);
+          return rel;
+        });
+      }
+
+      var promise = relationship.get('promise').then(function() {
+        return relationship;
+      }, null, "DS: Async hasMany records received");
+
+      return DS.PromiseArray.create({ promise: promise });
+    }
+
+    // copied from ember-data/lib/system/relationships/has_many.js
+    function buildRelationship(record, key, options, callback) {
+      var rels = record._relationships;
+
+      if (rels[key]) { return rels[key]; }
+
+      var data = get(record, 'data'),
+      store = get(record, 'store');
+
+      var relationship = rels[key] = callback.call(record, store, data);
+
+      return setProperties(relationship, {
+        owner: record, name: key, isPolymorphic: options.polymorphic
+      });
+    }
+
+    function hasRelationship(type, options) {
+      options = options || {};
+
+      var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
+
+      return Ember.computed(function(key, value) {
+        var records = get(this, 'data')[key],
+        isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
+
+        var relationship = this._relationships[key],
+        promiseLabel = "DS: Async hasMany " + records + " : " + key;
+
+        if (!isRecordsEveryEmpty) {
+          return asyncHasMany.call(this, type, options, meta, key);  
+        }
+
+        return buildRelationship(this, key, options, function(store, data) {
+          var records = data[key];
+          Ember.assert("You looked up the '" + key + "' relationship on '" + this + "' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)", Ember.A(records).everyProperty('isEmpty', false));
+          return store.findMany(this, data[key], meta.type);
+        });
+      }).property('data').meta(meta);
+    }
+
+    /*
+      @namespace
+      @method hasMany
+      @for DS
+      @param {String or DS.Model} type the model type of the relationship
+      @param {Object} options a hash of options
+      @return {Ember.computed} relationship
+    */
+    DS.hasMany = function(type, options) {
+      if (typeof type === 'object') {
+        options = type;
+        type = undefined;
+      }
+      return hasRelationship(type, options);
+    };
+
+    __exports__["default"] = DS.hasMany;
+  });
+define("socket-adapter/json_serializer", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var get = Ember.get, set = Ember.set, isNone = Ember.isNone;
+
+    DS.JSONSerializer.reopen({
+
+      serializeBelongsTo: function(record, json, relationship) {
+        var key = relationship.key;
+
+        var belongsTo;
+        if (record._data[key]) {
+          belongsTo = record._data[key].id;
+        } else {
+          belongsTo = get(record, key);
+        } 
+
+        key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
+
+        if (record._data[key]) {
+          json[key] = belongsTo;
+        } else {
+          json[key] = get(belongsTo, 'id');
+        }
+
+        if (relationship.options.polymorphic) {
+          this.serializePolymorphicType(record, json, relationship);
+        }
+      }
+
+    });
+
+    __exports__["default"] = DS.JSONSerializerer;
+  });
+define("socket-adapter/main", 
+  ["socket-adapter/json_serializer","socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","socket-adapter/has_many","socket-adapter/belongs_to","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+    "use strict";
+    var serializer = __dependency2__["default"];
+    var adapter = __dependency3__["default"];
+    var store = __dependency4__["default"];
+
+    var VERSION = "0.1.16";
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -355,11 +582,14 @@ define("socket-adapter/serializer",
       extractFindAll: function(store, type, payload) {
         return this.extractArray(store, type, payload.payload);
       },
+      extractFindMany: function(store, type, payload) {
+        return this.extractArray(store, type, payload.payload);
+      },
       extractCreateRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
       },
       extractUpdateRecords: function(store, type, payload) {
-        return this.extractArray(store, type, payload);
+       return this.extractArray(store, type, payload);
       },
       extractDeleteRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
@@ -449,8 +679,7 @@ define("socket-adapter/store",
     function _bulkCommit(adapter, store, operation, type, records) {
       var promise = adapter[operation](store, type, records),
         serializer = serializerForAdapter(adapter, type),
-        label = "DS: Extract and notify about " + operation + " completion of " + records.length +
-                " of type " + type.typeKey;
+        label = "DS: Extract and notify about " + operation + " completion of " + records.length + " of type " + type.typeKey;
 
       Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
 
@@ -480,24 +709,42 @@ define("socket-adapter/store",
 
     function _findQuery(adapter, store, type, query, recordArray) {
       var promise = adapter.findQuery(store, type, query, recordArray),
-        serializer = serializerForAdapter(adapter, type),
-        label = "DS: Handle Adapter#findQuery of " + type;
+          serializer = serializerForAdapter(adapter, type),
+          label = "DS: Handle Adapter#findQuery of " + type;
 
       return Promise.cast(promise, label).then(function(adapterPayload) {
         var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
-
         Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
-        recordArray.load(payload);
-        if (adapterPayload.meta){
-          recordArray.set('_meta', adapterPayload.meta);
-        }
-        return recordArray;
-      }, null, "DS: Extract payload of findQuery " + type);
+
+            recordArray.load(payload);
+            return recordArray;
+          }, null, "DS: Extract payload of findQuery " + type);
     }
+
+    function _findMany(adapter, store, type, ids, owner) {
+      var promise = adapter.findMany(store, type, ids, owner),
+          serializer = serializerForAdapter(adapter, type),
+          label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
+
+      return Promise.cast(promise, label).then(function(adapterPayload) {
+
+        var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
+        Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+        store.pushMany(type, payload);
+      }, null, "DS: Extract payload of " + type);
+    } 
 
 
     var Store = DS.Store.extend({
+      removeIdsFromStore:function(ids){
+        var i;
+        if (ids instanceof Array){
+          for (i = 0; i > ids.length; i++){
+
+          }
+        }
+      },
+
       findQuery: function(type, query) {
         type = this.modelFor(type);
 
@@ -528,9 +775,10 @@ define("socket-adapter/store",
         promise = promise || Promise.cast(array);
 
         return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
-          var meta = adapterPopulatedRecordArray.get('_meta');
+          var meta = adapterPopulatedRecordArray.meta;
           if (meta){
-            array.set('_meta', meta);
+            //TODO: maybe we should merge meta from server and not override it
+            array.set('meta', meta);
           }
           return array;
         }, null, "DS: Store#filter of " + type));
@@ -553,6 +801,7 @@ define("socket-adapter/store",
           var record = tuple[0], resolver = tuple[1],
             type = record.constructor,
             adapter = this.adapterFor(record.constructor),
+            bulkSupport = get(adapter, 'bulkOperationsSupport'),
             operation, typeIndex, operationIndex;
 
           if (get(record, 'isNew')) {
@@ -562,7 +811,7 @@ define("socket-adapter/store",
           } else {
             operation = 'updateRecord';
           }
-          if (get(adapter, 'bulkOperationsSupport')) {
+          if (bulkSupport) {
             operationIndex = bulkDataOperationMap.indexOf(operation);
             typeIndex = bulkDataTypeMap.indexOf(type);
             if (typeIndex === -1) {
@@ -597,9 +846,9 @@ define("socket-adapter/store",
                 _bulkCommit(bulkDataAdapters[i], this,
                   bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
                   .then(function(records) {
-                    for (k = 0; k < resolvers.length; k++) {
-                      resolvers[k].resolve(records[k]);
-                    }
+                    forEach(records,function(record, index){
+                      resolvers[index].resolve(record);
+                    });
                   });
               }
             }

@@ -75,8 +75,7 @@ function promiseArray(promise, label) {
 function _bulkCommit(adapter, store, operation, type, records) {
   var promise = adapter[operation](store, type, records),
     serializer = serializerForAdapter(adapter, type),
-    label = "DS: Extract and notify about " + operation + " completion of " + records.length +
-            " of type " + type.typeKey;
+    label = "DS: Extract and notify about " + operation + " completion of " + records.length + " of type " + type.typeKey;
 
   Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
 
@@ -112,11 +111,8 @@ function _findQuery(adapter, store, type, query, recordArray) {
   return Promise.cast(promise, label).then(function(adapterPayload) {
     var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
     Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-        //Set meta to adapterPopulatedRecordArray, it will be transitioned to instance of DS.FilteredRecordArray
+
         recordArray.load(payload);
-        if (adapterPayload.meta){
-          recordArray.set('_meta', adapterPayload.meta);
-        }
         return recordArray;
       }, null, "DS: Extract payload of findQuery " + type);
 }
@@ -136,6 +132,15 @@ function _findMany(adapter, store, type, ids, owner) {
 
 
 var Store = DS.Store.extend({
+  removeIdsFromStore:function(ids){
+    var i;
+    if (ids instanceof Array){
+      for (i = 0; i > ids.length; i++){
+
+      }
+    }
+  },
+
   findQuery: function(type, query) {
     type = this.modelFor(type);
 
@@ -166,9 +171,10 @@ var Store = DS.Store.extend({
     promise = promise || Promise.cast(array);
 
     return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
-      var meta = adapterPopulatedRecordArray.get('_meta');
+      var meta = adapterPopulatedRecordArray.meta;
       if (meta){
-        array.set('_meta', meta);
+        //TODO: maybe we should merge meta from server and not override it
+        array.set('meta', meta);
       }
       return array;
     }, null, "DS: Store#filter of " + type));
@@ -191,6 +197,7 @@ var Store = DS.Store.extend({
       var record = tuple[0], resolver = tuple[1],
         type = record.constructor,
         adapter = this.adapterFor(record.constructor),
+        bulkSupport = get(adapter, 'bulkOperationsSupport'),
         operation, typeIndex, operationIndex;
 
       if (get(record, 'isNew')) {
@@ -200,7 +207,7 @@ var Store = DS.Store.extend({
       } else {
         operation = 'updateRecord';
       }
-      if (get(adapter, 'bulkOperationsSupport')) {
+      if (bulkSupport) {
         operationIndex = bulkDataOperationMap.indexOf(operation);
         typeIndex = bulkDataTypeMap.indexOf(type);
         if (typeIndex === -1) {
@@ -235,9 +242,9 @@ var Store = DS.Store.extend({
             _bulkCommit(bulkDataAdapters[i], this,
               bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
               .then(function(records) {
-                for (k = 0; k < resolvers.length; k++) {
-                  resolvers[k].resolve(records[k]);
-                }
+                forEach(records,function(record, index){
+                  resolvers[index].resolve(record);
+                });
               });
           }
         }
