@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.16
-// 7832245 (2014-06-03 15:06:48 +0300)
+// v0.1.17
+// 2d2ad52 (2014-06-04 17:52:00 +0300)
 
 
 (function(global) {
@@ -108,6 +108,35 @@ define("socket-adapter/adapter",
           );
       },
 
+
+      /**
+       *
+       * @param request
+       * @returns {bool}
+       */
+      validateResponse: function (response) {
+        var validationResult = Ember.Object.create({
+          valid: true
+        });
+
+        if (response.hasOwnProperty('error')) {
+          validationResult.set('message', response.error);
+          if (response.hasOwnProperty('request_id')) {
+            validationResult.set('request_id', response.request_id);
+          }
+          validationResult.set('valid', false);
+          return validationResult;
+        }
+
+        if (!response.hasOwnProperty('request_id')) {
+          if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+            validationResult.set('valid', false);
+            return validationResult;
+          }
+        }
+        return validationResult;
+      },
+
       /**
        *
        * @param type
@@ -115,7 +144,8 @@ define("socket-adapter/adapter",
        * @returns {Ember.get|*|Object}
        */
       getConnection: function(type, options) {
-        var store = type.typeKey && type.store;
+        var store = type.typeKey && type.store,
+            scope = this;
         type = type.typeKey;
         var connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type),
@@ -138,28 +168,44 @@ define("socket-adapter/adapter",
           if (type) {
             //TODO: when should be reject promise hmmm?
             socketNS.on('message', function(response) {
-              if (response.request_id && requestsPool[response.request_id]) {
-                var resolver = requestsPool[response.request_id].resolve;
-                delete response.request_id;
-                Ember.run(null, resolver, response);
-                delete requestsPool[response.request_id];
-              }
-              /**
-               * Handling PUSH notifications
-               * Operations can be only multiple
-               */
-              else {
-                //if response contains only ids array it means that we receive DELETE
-                if (response.ids) {
-                  //remove all records from store without sending DELETE requests
-                    forEach(response.ids, function (id) {
-                      var record = store.getById(type, id);
-                      store.unloadRecord(record);
-                    });
+               
+              var responseValid = scope.validateResponse(response);
+
+              if (!responseValid.valid) {
+                if (responseValid.request_id && requestsPool[response.request_id]) {
+                  var reject = requestsPool[response.request_id].reject;
+                  delete responseValid.valid;
+                  delete responseValid.request_id;
+                  delete requestsPool[responseValid.request_id];
+                  Ember.run(null, reject, responseValid);
                 }
-                //we receive CREATE or UPDATE, ember-data will manage data itself
+              } else {
+
+                if (response.request_id && requestsPool[response.request_id]) {
+                  var resolver = requestsPool[response.request_id].resolve;
+                  delete response.request_id;
+                  Ember.run(null, resolver, response);
+                  delete requestsPool[response.request_id];
+                }
+                /**
+                 * Handling PUSH notifications
+                 * Operations can be only multiple
+                 */
                 else {
-                  store.pushPayload(type, response.payload);
+                  //if response contains only ids array it means that we receive DELETE
+                  if (response.ids) {
+                    //remove all records from store without sending DELETE requests
+                      forEach(response.ids, function (id) {
+                        var record = store.getById(type, id);
+                        store.unloadRecord(record);
+                      });
+                  }
+                  //we receive CREATE or UPDATE, ember-data will manage data itself
+                  else {
+                    if (response.hasOwnProperty('payload')) {
+                      store.pushPayload(type, response.payload);
+                    }
+                  }
                 }
               }
             });
@@ -553,7 +599,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = "0.1.16";
+    var VERSION = "0.1.17";
     var SA;
     if ('undefined' === typeof SA) {
 
