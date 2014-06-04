@@ -36,26 +36,26 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {bool}
    */
   validateResponse: function (response) {
-    var errorObject = Ember.Object.create({
+    var validationResult = Ember.Object.create({
       valid: true
     });
 
     if (response.hasOwnProperty('error')) {
-      errorObject.set('message', response.error);
+      validationResult.set('message', response.error);
       if (response.hasOwnProperty('request_id')) {
-        errorObject.set('request_id', response.request_id);
+        validationResult.set('request_id', response.request_id);
       }
-      errorObject.set('valid', false);
-      return errorObject;
+      validationResult.set('valid', false);
+      return validationResult;
     }
 
     if (!response.hasOwnProperty('request_id')) {
       if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
-        errorObject.set('valid', false);
-        return errorObject;
+        validationResult.set('valid', false);
+        return validationResult;
       }
     }
-    return errorObject;
+    return validationResult;
   },
 
   /**
@@ -93,41 +93,39 @@ var SocketAdapter = DS.RESTAdapter.extend({
           var responseValid = scope.validateResponse(response);
 
           if (!responseValid.valid) {
-            if (responseValid.request_id) {
-              if (requestsPool[response.request_id]) {
-                var reject = requestsPool[response.request_id].reject;
-                delete responseValid.valid;
-                delete responseValid.request_id;
-                delete requestsPool[responseValid.request_id];
-                Ember.run(null, reject, responseValid);
-              }
-              return;
+            if (responseValid.request_id && requestsPool[response.request_id]) {
+              var reject = requestsPool[response.request_id].reject;
+              delete responseValid.valid;
+              delete responseValid.request_id;
+              delete requestsPool[responseValid.request_id];
+              Ember.run(null, reject, responseValid);
             }
-          }
+          } else {
 
-          if (response.request_id && requestsPool[response.request_id]) {
-            var resolver = requestsPool[response.request_id].resolve;
-            delete response.request_id;
-            Ember.run(null, resolver, response);
-            delete requestsPool[response.request_id];
-          }
-          /**
-           * Handling PUSH notifications
-           * Operations can be only multiple
-           */
-          else {
-            //if response contains only ids array it means that we receive DELETE
-            if (response.ids) {
-              //remove all records from store without sending DELETE requests
-                forEach(response.ids, function (id) {
-                  var record = store.getById(type, id);
-                  store.unloadRecord(record);
-                });
+            if (response.request_id && requestsPool[response.request_id]) {
+              var resolver = requestsPool[response.request_id].resolve;
+              delete response.request_id;
+              Ember.run(null, resolver, response);
+              delete requestsPool[response.request_id];
             }
-            //we receive CREATE or UPDATE, ember-data will manage data itself
+            /**
+             * Handling PUSH notifications
+             * Operations can be only multiple
+             */
             else {
-              if (response.hasOwnProperty('payload')) {
-                store.pushPayload(type, response.payload);
+              //if response contains only ids array it means that we receive DELETE
+              if (response.ids) {
+                //remove all records from store without sending DELETE requests
+                  forEach(response.ids, function (id) {
+                    var record = store.getById(type, id);
+                    store.unloadRecord(record);
+                  });
+              }
+              //we receive CREATE or UPDATE, ember-data will manage data itself
+              else {
+                if (response.hasOwnProperty('payload')) {
+                  store.pushPayload(type, response.payload);
+                }
               }
             }
           }
