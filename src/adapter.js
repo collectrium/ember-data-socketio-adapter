@@ -36,29 +36,26 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {bool}
    */
   validateResponse: function (response) {
-    var errorObject = {
-      error: {
-        code: 100,
-        message: null
-      }
-    };
+    var errorObject = Ember.Object.create({
+      valid: true
+    });
 
     if (response.hasOwnProperty('error')) {
-      errorObject.error.message = response.error;
+      errorObject.set('message', response.error);
       if (response.hasOwnProperty('request_id')) {
-        errorObject.error.request_id = response.request_id;
+        errorObject.set('request_id', response.request_id);
       }
+      errorObject.set('valid', false);
       return errorObject;
     }
 
-    if (response.hasOwnProperty('request_id')) {
-      return true; 
-    } else {
+    if (!response.hasOwnProperty('request_id')) {
       if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+        errorObject.set('valid', false);
         return errorObject;
       }
-      return true;
     }
+    return errorObject;
   },
 
   /**
@@ -95,12 +92,13 @@ var SocketAdapter = DS.RESTAdapter.extend({
            
           var responseValid = scope.validateResponse(response);
 
-          if (responseValid.hasOwnProperty('error')) {
-            if (responseValid.error.request_id) {
-              var reject = requestsPool[response.request_id].reject;
-              if (reject) {
-                delete responseValid.error.request_id;
-                delete requestsPool[responseValid.error.request_id];
+          if (!responseValid.valid) {
+            if (responseValid.request_id) {
+              if (requestsPool[response.request_id]) {
+                var reject = requestsPool[response.request_id].reject;
+                delete responseValid.valid;
+                delete responseValid.request_id;
+                delete requestsPool[responseValid.request_id];
                 Ember.run(null, reject, responseValid);
               }
               return;

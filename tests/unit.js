@@ -407,16 +407,13 @@ test('Filterd Records should be added in store correctly', function () {
 });
 
 test('Response Validation should be work correctly', function () {
-  expect(1);
+  expect(3);
 
   store.findQuery('post', {id:1 , error: 'error'}).then(function (response) {
   }, async(function (err) {
-    deepEqual(err, {
-      error: {
-        code: 100,
-        message: 'Server error'
-      }
-    }, 'Error Object should be valid');
+    ok(err.get('message'), 'Server error', 'Message should be equal "Server error"');  
+    equal(err.get('valid'), undefined, 'Valid should be equal undefined');  
+    equal(err.get('request_id'), undefined, 'Request_id should be equal undefined');  
   }));
 });
 
