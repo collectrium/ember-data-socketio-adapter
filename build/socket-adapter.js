@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.16
-// 7832245 (2014-06-03 15:06:48 +0300)
+// v0.1.17
+// 8cad3dc (2014-08-06 16:22:58 +0300)
 
 
 (function(global) {
@@ -73,7 +73,7 @@ var define, requireModule, require, requirejs;
     }
   };
 })();
-define("socket-adapter/adapter", 
+define("socket-adapter/adapter",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -108,6 +108,35 @@ define("socket-adapter/adapter",
           );
       },
 
+
+      /**
+       *
+       * @param request
+       * @returns {bool}
+       */
+      validateResponse: function (response, type) {
+        var validationResult = Ember.Object.create({
+          valid: true
+        });
+
+        if (response.hasOwnProperty('error')) {
+          validationResult.set('message', response.error);
+          if (response.hasOwnProperty('request_id')) {
+            validationResult.set('request_id', response.request_id);
+          }
+          validationResult.set('valid', false);
+          return validationResult;
+        }
+
+        if (!response.hasOwnProperty('request_id')) {
+          if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids') && !response.hasOwnProperty(type)) {
+            validationResult.set('valid', false);
+            return validationResult;
+          }
+        }
+        return validationResult;
+      },
+
       /**
        *
        * @param type
@@ -115,7 +144,8 @@ define("socket-adapter/adapter",
        * @returns {Ember.get|*|Object}
        */
       getConnection: function(type, options) {
-        var store = type.typeKey && type.store;
+        var store = type.typeKey && type.store,
+            scope = this;
         type = type.typeKey;
         var connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type),
@@ -138,28 +168,44 @@ define("socket-adapter/adapter",
           if (type) {
             //TODO: when should be reject promise hmmm?
             socketNS.on('message', function(response) {
-              if (response.request_id && requestsPool[response.request_id]) {
-                var resolver = requestsPool[response.request_id].resolve;
-                delete response.request_id;
-                Ember.run(null, resolver, response);
-                delete requestsPool[response.request_id];
-              }
-              /**
-               * Handling PUSH notifications
-               * Operations can be only multiple
-               */
-              else {
-                //if response contains only ids array it means that we receive DELETE
-                if (response.ids) {
-                  //remove all records from store without sending DELETE requests
-                    forEach(response.ids, function (id) {
-                      var record = store.getById(type, id);
-                      store.unloadRecord(record);
-                    });
+               
+              var responseValid = scope.validateResponse(response, type);
+
+              if (!responseValid.valid) {
+                if (responseValid.request_id && requestsPool[response.request_id]) {
+                  var reject = requestsPool[response.request_id].reject;
+                  delete responseValid.valid;
+                  delete responseValid.request_id;
+                  delete requestsPool[responseValid.request_id];
+                  Ember.run(null, reject, responseValid);
                 }
-                //we receive CREATE or UPDATE, ember-data will manage data itself
+              } else {
+
+                if (response.request_id && requestsPool[response.request_id]) {
+                  var resolver = requestsPool[response.request_id].resolve;
+                  delete response.request_id;
+                  Ember.run(null, resolver, response);
+                  delete requestsPool[response.request_id];
+                }
+                /**
+                 * Handling PUSH notifications
+                 * Operations can be only multiple
+                 */
                 else {
-                  store.pushPayload(type, response.payload);
+                  //if response contains only ids array it means that we receive DELETE
+                  if (response.ids) {
+                    //remove all records from store without sending DELETE requests
+                      forEach(response.ids, function (id) {
+                        var record = store.getById(type, id);
+                        store.unloadRecord(record);
+                      });
+                  }
+                  //we receive CREATE or UPDATE, ember-data will manage data itself
+                  else {
+                    if (response.hasOwnProperty('payload')) {
+                      store.pushPayload(type, response.payload);
+                    }
+                  }
                 }
               }
             });
@@ -348,7 +394,7 @@ define("socket-adapter/adapter",
 
     __exports__["default"] = SocketAdapter;
   });
-define("socket-adapter/belongs_to", 
+define("socket-adapter/belongs_to",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -414,7 +460,7 @@ define("socket-adapter/belongs_to",
 
     __exports__["default"] = DS.belongsTo;
   });
-define("socket-adapter/has_many", 
+define("socket-adapter/has_many",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -510,7 +556,7 @@ define("socket-adapter/has_many",
 
     __exports__["default"] = DS.hasMany;
   });
-define("socket-adapter/json_serializer", 
+define("socket-adapter/json_serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -545,7 +591,7 @@ define("socket-adapter/json_serializer",
 
     __exports__["default"] = DS.JSONSerializerer;
   });
-define("socket-adapter/main", 
+define("socket-adapter/main",
   ["socket-adapter/json_serializer","socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","socket-adapter/has_many","socket-adapter/belongs_to","exports"],
   function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     "use strict";
@@ -553,7 +599,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = "0.1.16";
+    var VERSION = "0.1.17";
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -571,7 +617,7 @@ define("socket-adapter/main",
 
     __exports__["default"] = SA;
   });
-define("socket-adapter/serializer", 
+define("socket-adapter/serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -598,7 +644,7 @@ define("socket-adapter/serializer",
 
     __exports__["default"] = Serializer;
   });
-define("socket-adapter/store", 
+define("socket-adapter/store",
   ["exports"],
   function(__exports__) {
     "use strict";
