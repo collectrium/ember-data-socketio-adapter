@@ -35,7 +35,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @param request
    * @returns {bool}
    */
-  validateResponse: function (response) {
+  validateResponse: function (response, type) {
     var validationResult = Ember.Object.create({
       valid: true
     });
@@ -50,7 +50,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
     }
 
     if (!response.hasOwnProperty('request_id')) {
-      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids') && !response.hasOwnProperty(type)) {
         validationResult.set('valid', false);
         return validationResult;
       }
@@ -90,7 +90,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
         //TODO: when should be reject promise hmmm?
         socketNS.on('message', function(response) {
            
-          var responseValid = scope.validateResponse(response);
+          var responseValid = scope.validateResponse(response, type);
 
           if (!responseValid.valid) {
             if (responseValid.request_id && requestsPool[response.request_id]) {
