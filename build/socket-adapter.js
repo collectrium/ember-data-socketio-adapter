@@ -692,7 +692,7 @@ define("socket-adapter/store",
           payload = adapterPayload;
         }
         forEach(records, function(record, index) {
-          store.didSaveRecord(record, payload[index]);
+          store.didSaveRecord(record, payload && payload[index]);
         });
         return records;
       }, function(reason) {
