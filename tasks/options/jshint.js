@@ -1,7 +1,8 @@
 module.exports = {
   all: [
-    'dist/socket-adapter.js',
+    'src/',
     'tests/adapter_tests.js',
     'tests/adapter_embedded_tests.js'
-  ]
+  ],
+  options: { jshintrc: '.jshintrc' }
 };

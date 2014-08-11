@@ -17,6 +17,9 @@ module.exports = function(karma) {
     browsers: ['PhantomJS'],
     singleRun: true,
     autoWatch: false,
+    /*browsers: ['Chrome'],
+    singleRun: false,
+    autoWatch: true,*/
 
     frameworks: ['qunit']
   });

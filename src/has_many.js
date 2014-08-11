@@ -8,7 +8,7 @@ var get = Ember.get, set = Ember.set, setProperties = Ember.setProperties;
 function asyncHasMany(type, options, meta, key) {
   /*jshint validthis:true */
   var relationship = this._relationships[key],
-  promiseLabel = "DS: Async hasMany " + this + " : " + key;
+  promiseLabel = 'DS: Async hasMany ' + this + ' : ' + key;
 
   if (!relationship) {
     var resolver = Ember.RSVP.defer(promiseLabel);
@@ -27,7 +27,7 @@ function asyncHasMany(type, options, meta, key) {
 
   var promise = relationship.get('promise').then(function() {
     return relationship;
-  }, null, "DS: Async hasMany records received");
+  }, null, 'DS: Async hasMany records received');
 
   return DS.PromiseArray.create({ promise: promise });
 }
@@ -53,12 +53,9 @@ function hasRelationship(type, options) {
 
   var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
 
-  return Ember.computed(function(key, value) {
+  return Ember.computed(function(key) {
     var records = get(this, 'data')[key],
     isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
-
-    var relationship = this._relationships[key],
-    promiseLabel = "DS: Async hasMany " + records + " : " + key;
 
     if (!isRecordsEveryEmpty) {
       return asyncHasMany.call(this, type, options, meta, key);  
@@ -66,7 +63,7 @@ function hasRelationship(type, options) {
 
     return buildRelationship(this, key, options, function(store, data) {
       var records = data[key];
-      Ember.assert("You looked up the '" + key + "' relationship on '" + this + "' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)", Ember.A(records).everyProperty('isEmpty', false));
+      Ember.assert('You looked up the \'' + key + '\' relationship on \'' + this + '\' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)', Ember.A(records).everyProperty('isEmpty', false));
       return store.findMany(this, data[key], meta.type);
     });
   }).property('data').meta(meta);

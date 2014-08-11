@@ -28,13 +28,14 @@
     "invokeAsync",
     "jQuery"
   ],
-
-  "node" : false,
-  "es5" : true,
-  "browser" : true,
-
-  "boss" : true,
-  "curly": false,
+  "proto": true,
+  "indent": 2,
+  "camelcase": true,
+  "node": true,
+  "browser": false,
+  "boss": true,
+  "curly": true,
+  "latedef": "nofunc",
   "debug": false,
   "devel": false,
   "eqeqeq": true,
@@ -45,14 +46,17 @@
   "newcap": true,
   "noarg": true,
   "noempty": false,
+  "quotmark": true,
   "nonew": false,
   "nomen": false,
   "onevar": false,
   "plusplus": false,
   "regexp": false,
   "undef": true,
+  "unused": true,
   "sub": true,
-  "strict": false,
+  "trailing": true,
   "white": false,
-  "eqnull": true
+  "eqnull": true,
+  "esnext": true
 }
