@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.16
-// 7832245 (2014-06-03 15:06:48 +0300)
+// v0.1.17
+// 0be9266 (2014-08-08 18:50:38 +0300)
 
 
 (function(global) {
@@ -78,6 +78,7 @@ define("socket-adapter/adapter",
   function(__exports__) {
     "use strict";
     /*global io */
+    /*jshint camelcase: false */
     var get = Ember.get, set = Ember.set;
     var forEach = Ember.EnumerableUtils.forEach;
 
@@ -100,12 +101,40 @@ define("socket-adapter/adapter",
         };
 
         return (
-          S4() + S4() + "-" +
-          S4() + "-" +
-          S4() + "-" +
-          S4() + "-" +
+          S4() + S4() + '-' +
+          S4() + '-' +
+          S4() + '-' +
+          S4() + '-' +
           S4() + S4() + S4()
           );
+      },
+
+      /**
+       *
+       * @param request
+       * @returns {bool}
+       */
+      validateResponse: function (response, type) {
+        var validationResult = Ember.Object.create({
+          valid: true
+        });
+
+        if (response.hasOwnProperty('error')) {
+          validationResult.set('message', response.error);
+          if (response.hasOwnProperty('request_id')) {
+            validationResult.set('request_id', response.request_id);
+          }
+          validationResult.set('valid', false);
+          return validationResult;
+        }
+
+        if (!response.hasOwnProperty('request_id')) {
+          if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids') && !response.hasOwnProperty(type)) {
+            validationResult.set('valid', false);
+            return validationResult;
+          }
+        }
+        return validationResult;
       },
 
       /**
@@ -115,7 +144,8 @@ define("socket-adapter/adapter",
        * @returns {Ember.get|*|Object}
        */
       getConnection: function(type, options) {
-        var store = type.typeKey && type.store;
+        var store = type.typeKey && type.store,
+            scope = this;
         type = type.typeKey;
         var connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type),
@@ -138,28 +168,44 @@ define("socket-adapter/adapter",
           if (type) {
             //TODO: when should be reject promise hmmm?
             socketNS.on('message', function(response) {
-              if (response.request_id && requestsPool[response.request_id]) {
-                var resolver = requestsPool[response.request_id].resolve;
-                delete response.request_id;
-                Ember.run(null, resolver, response);
-                delete requestsPool[response.request_id];
-              }
-              /**
-               * Handling PUSH notifications
-               * Operations can be only multiple
-               */
-              else {
-                //if response contains only ids array it means that we receive DELETE
-                if (response.ids) {
-                  //remove all records from store without sending DELETE requests
-                    forEach(response.ids, function (id) {
-                      var record = store.getById(type, id);
-                      store.unloadRecord(record);
-                    });
+               
+              var responseValid = scope.validateResponse(response, type);
+
+              if (!responseValid.valid) {
+                if (responseValid.request_id && requestsPool[response.request_id]) {
+                  var reject = requestsPool[response.request_id].reject;
+                  delete responseValid.valid;
+                  delete responseValid.request_id;
+                  delete requestsPool[responseValid.request_id];
+                  Ember.run(null, reject, responseValid);
                 }
-                //we receive CREATE or UPDATE, ember-data will manage data itself
+              } else {
+
+                if (response.request_id && requestsPool[response.request_id]) {
+                  var resolver = requestsPool[response.request_id].resolve;
+                  delete response.request_id;
+                  Ember.run(null, resolver, response);
+                  delete requestsPool[response.request_id];
+                }
+                /**
+                 * Handling PUSH notifications
+                 * Operations can be only multiple
+                 */
                 else {
-                  store.pushPayload(type, response.payload);
+                  //if response contains only ids array it means that we receive DELETE
+                  if (response.ids) {
+                    //remove all records from store without sending DELETE requests
+                      forEach(response.ids, function (id) {
+                        var record = store.getById(type, id);
+                        store.unloadRecord(record);
+                      });
+                  }
+                  //we receive CREATE or UPDATE, ember-data will manage data itself
+                  else {
+                    if (response.hasOwnProperty('payload')) {
+                      store.pushPayload(type, response.payload);
+                    }
+                  }
                 }
               }
             });
@@ -180,7 +226,7 @@ define("socket-adapter/adapter",
         var connection = this.getConnection(type),
           requestsPool = this.get('requestsPool'),
           requestId = this.generateRequestId(),
-          deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
+          deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
         if (!(hash instanceof Object)) {
           hash = {};
         }
@@ -352,9 +398,11 @@ define("socket-adapter/belongs_to",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var get = Ember.get, set = Ember.set,
+    /*global Model*/
+    var get = Ember.get,
         isNone = Ember.isNone;
 
+    /*jshint -W079 */
     var Promise = Ember.RSVP.Promise;
 
     // copied from ember-data//lib/system/relationships/belongs_to.js
@@ -362,7 +410,7 @@ define("socket-adapter/belongs_to",
       return Ember.computed('data', function(key, value) {
         var data = get(this, 'data'),
             store = get(this, 'store'),
-            promiseLabel = "DS: Async belongsTo " + this + " : " + key,
+            promiseLabel = 'DS: Async belongsTo ' + this + ' : ' + key,
             promise;
 
         if (arguments.length === 2) {
@@ -428,7 +476,7 @@ define("socket-adapter/has_many",
     function asyncHasMany(type, options, meta, key) {
       /*jshint validthis:true */
       var relationship = this._relationships[key],
-      promiseLabel = "DS: Async hasMany " + this + " : " + key;
+      promiseLabel = 'DS: Async hasMany ' + this + ' : ' + key;
 
       if (!relationship) {
         var resolver = Ember.RSVP.defer(promiseLabel);
@@ -447,7 +495,7 @@ define("socket-adapter/has_many",
 
       var promise = relationship.get('promise').then(function() {
         return relationship;
-      }, null, "DS: Async hasMany records received");
+      }, null, 'DS: Async hasMany records received');
 
       return DS.PromiseArray.create({ promise: promise });
     }
@@ -473,12 +521,9 @@ define("socket-adapter/has_many",
 
       var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
 
-      return Ember.computed(function(key, value) {
+      return Ember.computed(function(key) {
         var records = get(this, 'data')[key],
         isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
-
-        var relationship = this._relationships[key],
-        promiseLabel = "DS: Async hasMany " + records + " : " + key;
 
         if (!isRecordsEveryEmpty) {
           return asyncHasMany.call(this, type, options, meta, key);  
@@ -514,7 +559,7 @@ define("socket-adapter/json_serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var get = Ember.get, set = Ember.set, isNone = Ember.isNone;
+    var get = Ember.get;
 
     DS.JSONSerializer.reopen({
 
@@ -528,7 +573,7 @@ define("socket-adapter/json_serializer",
           belongsTo = get(record, key);
         } 
 
-        key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
+        key = this.keyForRelationship ? this.keyForRelationship(key, 'belongsTo') : key;
 
         if (record._data[key]) {
           json[key] = belongsTo;
@@ -553,7 +598,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = "0.1.16";
+    var VERSION = '0.1.17';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -604,6 +649,7 @@ define("socket-adapter/store",
     "use strict";
     var get = Ember.get, set = Ember.set;
     var forEach = Ember.EnumerableUtils.forEach;
+    /*jshint -W079 */
     var Promise = Ember.RSVP.Promise;
     var PromiseArray = Ember.ArrayProxy.extend(Ember.PromiseProxyMixin);
 
@@ -643,7 +689,7 @@ define("socket-adapter/store",
       var type = record.constructor,
         promise = adapter[operation](store, type, record),
         serializer = serializerForAdapter(adapter, type),
-        label = "DS: Extract and notify about " + operation + " completion of " + record;
+        label = 'DS: Extract and notify about ' + operation + ' completion of ' + record;
 
       ;
 
@@ -679,7 +725,8 @@ define("socket-adapter/store",
     function _bulkCommit(adapter, store, operation, type, records) {
       var promise = adapter[operation](store, type, records),
         serializer = serializerForAdapter(adapter, type),
-        label = "DS: Extract and notify about " + operation + " completion of " + records.length + " of type " + type.typeKey;
+        label = 'DS: Extract and notify about ' + operation + ' completion of ' + records.length +
+                ' of type ' + type.typeKey;
 
       ;
 
@@ -692,7 +739,7 @@ define("socket-adapter/store",
           payload = adapterPayload;
         }
         forEach(records, function(record, index) {
-          store.didSaveRecord(record, payload[index]);
+          store.didSaveRecord(record, payload && payload[index]);
         });
         return records;
       }, function(reason) {
@@ -709,37 +756,23 @@ define("socket-adapter/store",
 
     function _findQuery(adapter, store, type, query, recordArray) {
       var promise = adapter.findQuery(store, type, query, recordArray),
-          serializer = serializerForAdapter(adapter, type),
-          label = "DS: Handle Adapter#findQuery of " + type;
+        serializer = serializerForAdapter(adapter, type),
+        label = 'DS: Handle Adapter#findQuery of ' + type;
 
       return Promise.cast(promise, label).then(function(adapterPayload) {
         var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
         ;
 
-            recordArray.load(payload);
-            return recordArray;
-          }, null, "DS: Extract payload of findQuery " + type);
+        recordArray.load(payload);
+        return recordArray;
+      }, null, 'DS: Extract payload of findQuery ' + type);
     }
 
-    function _findMany(adapter, store, type, ids, owner) {
-      var promise = adapter.findMany(store, type, ids, owner),
-          serializer = serializerForAdapter(adapter, type),
-          label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
-
-      return Promise.cast(promise, label).then(function(adapterPayload) {
-
-        var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
-        ;
-        store.pushMany(type, payload);
-      }, null, "DS: Extract payload of " + type);
-    } 
-
-
-    var Store = DS.Store.extend({
-      removeIdsFromStore:function(ids){
+    var Store = DS.Store.extend(Ember.Evented, {
+      removeIdsFromStore: function(ids) {
         var i;
-        if (ids instanceof Array){
-          for (i = 0; i > ids.length; i++){
+        if (ids instanceof Array) {
+          for (i = 0; i > ids.length; i++) {
 
           }
         }
@@ -776,12 +809,12 @@ define("socket-adapter/store",
 
         return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
           var meta = adapterPopulatedRecordArray.meta;
-          if (meta){
+          if (meta) {
             //TODO: maybe we should merge meta from server and not override it
-            array.set('meta', meta);
+            set(array, 'meta', meta);
           }
           return array;
-        }, null, "DS: Store#filter of " + type));
+        }, null, 'DS: Store#filter of ' + type));
       },
 
       flushPendingSave: function() {
@@ -795,7 +828,7 @@ define("socket-adapter/store",
             'createRecord',
             'deleteRecord',
             'updateRecord'
-          ], resolvers, i, j, k;
+          ], resolvers, i, j;
 
         forEach(pending, function(tuple) {
           var record = tuple[0], resolver = tuple[1],
@@ -846,7 +879,7 @@ define("socket-adapter/store",
                 _bulkCommit(bulkDataAdapters[i], this,
                   bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
                   .then(function(records) {
-                    forEach(records,function(record, index){
+                    forEach(records, function(record, index) {
                       resolvers[index].resolve(record);
                     });
                   });
