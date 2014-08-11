@@ -1,4 +1,5 @@
-/*global io */
+/*global io, window*/
+/*jshint camelcase: false */
 var get = Ember.get, set = Ember.set;
 var forEach = Ember.EnumerableUtils.forEach;
 
@@ -21,41 +22,50 @@ var SocketAdapter = DS.RESTAdapter.extend({
     };
 
     return (
-      S4() + S4() + "-" +
-      S4() + "-" +
-      S4() + "-" +
-      S4() + "-" +
+      S4() + S4() + '-' +
+      S4() + '-' +
+      S4() + '-' +
+      S4() + '-' +
       S4() + S4() + S4()
       );
   },
-
 
   /**
    *
    * @param request
    * @returns {bool}
    */
-  validateResponse: function (response, type) {
-    var validationResult = Ember.Object.create({
-      valid: true
-    });
-
-    if (response.hasOwnProperty('error')) {
-      validationResult.set('message', response.error);
-      if (response.hasOwnProperty('request_id')) {
-        validationResult.set('request_id', response.request_id);
+  validateResponse: function (response, requestsPool) {
+    var isValid = true;
+    /**
+     * Validation for responses
+     * 'request_id' should be inside 'requestsPool'
+     */
+    if (response.hasOwnProperty('request_id')) {
+      if (!requestsPool[response.request_id]){
+        isValid = false;
       }
-      validationResult.set('valid', false);
-      return validationResult;
+      window.test = requestsPool[response.request_id].requestType;
     }
 
-    if (!response.hasOwnProperty('request_id')) {
-      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids') && !response.hasOwnProperty(type)) {
-        validationResult.set('valid', false);
-        return validationResult;
+    /**
+     * Validation for push notifications
+     * response should contains either 'payload' or 'ids' key
+     * 'payload' type should be Object
+     * 'ids' type should be Array
+     */
+    else {
+      if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+        isValid = false;
+      }
+      if (response.hasOwnProperty('ids') && !(response.ids instanceof Array)){
+        isValid = false;
+      }
+      if (response.hasOwnProperty('payload') && !(response.payload instanceof Object)){
+        isValid = false;
       }
     }
-    return validationResult;
+    return isValid;
   },
 
   /**
@@ -89,30 +99,28 @@ var SocketAdapter = DS.RESTAdapter.extend({
       if (type) {
         //TODO: when should be reject promise hmmm?
         socketNS.on('message', function(response) {
-           
-          var responseValid = scope.validateResponse(response, type);
 
-          if (!responseValid.valid) {
-            if (responseValid.request_id && requestsPool[response.request_id]) {
-              var reject = requestsPool[response.request_id].reject;
-              delete responseValid.valid;
-              delete responseValid.request_id;
-              delete requestsPool[responseValid.request_id];
-              Ember.run(null, reject, responseValid);
+          var isResponseValid = scope.validateResponse(response, requestsPool);
+
+          if (!isResponseValid) {
+            if (response.request_id && requestsPool[response.request_id]) {
+              var rejecter = requestsPool[response.request_id].reject;
+              delete requestsPool[response.request_id];
+              Ember.run(null, rejecter, response);
             }
           } else {
-
             if (response.request_id && requestsPool[response.request_id]) {
               var resolver = requestsPool[response.request_id].resolve;
               delete response.request_id;
-              Ember.run(null, resolver, response);
               delete requestsPool[response.request_id];
+              Ember.run(null, resolver, response);
             }
             /**
              * Handling PUSH notifications
              * Operations can be only multiple
              */
             else {
+              store.trigger('notification', response);
               //if response contains only ids array it means that we receive DELETE
               if (response.ids) {
                 //remove all records from store without sending DELETE requests
@@ -147,10 +155,11 @@ var SocketAdapter = DS.RESTAdapter.extend({
     var connection = this.getConnection(type),
       requestsPool = this.get('requestsPool'),
       requestId = this.generateRequestId(),
-      deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
+      deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
     if (!(hash instanceof Object)) {
       hash = {};
     }
+    deffered.requestType = requestType;
     hash.request_id = requestId;
     requestsPool[requestId] = deffered;
     connection.emit(requestType, hash);
@@ -306,7 +315,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
   openSocket: function() {
     set(this, 'socketConnections', Ember.Object.create());
-    set(this, 'requestsPool', Ember.Object.create());
+    set(this, 'requestsPool', Ember.A([]));
     this.getConnection({
       resource: 'handshake'
     });

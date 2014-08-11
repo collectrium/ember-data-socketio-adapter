@@ -1,4 +1,4 @@
-var get = Ember.get, set = Ember.set, isNone = Ember.isNone;
+var get = Ember.get;
 
 DS.JSONSerializer.reopen({
 
@@ -12,7 +12,7 @@ DS.JSONSerializer.reopen({
       belongsTo = get(record, key);
     } 
 
-    key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
+    key = this.keyForRelationship ? this.keyForRelationship(key, 'belongsTo') : key;
 
     if (record._data[key]) {
       json[key] = belongsTo;

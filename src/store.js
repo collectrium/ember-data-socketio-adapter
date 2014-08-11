@@ -1,5 +1,6 @@
 var get = Ember.get, set = Ember.set;
 var forEach = Ember.EnumerableUtils.forEach;
+/*jshint -W079 */
 var Promise = Ember.RSVP.Promise;
 var PromiseArray = Ember.ArrayProxy.extend(Ember.PromiseProxyMixin);
 
@@ -39,9 +40,9 @@ function _commit(adapter, store, operation, record) {
   var type = record.constructor,
     promise = adapter[operation](store, type, record),
     serializer = serializerForAdapter(adapter, type),
-    label = "DS: Extract and notify about " + operation + " completion of " + record;
+    label = 'DS: Extract and notify about ' + operation + ' completion of ' + record;
 
-  Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
+  Ember.assert('Your adapter\'s ' + operation + ' method must return a promise, but it returned ' + promise, isThenable(promise));
 
   return promise.then(function(adapterPayload) {
     var payload;
@@ -75,9 +76,10 @@ function promiseArray(promise, label) {
 function _bulkCommit(adapter, store, operation, type, records) {
   var promise = adapter[operation](store, type, records),
     serializer = serializerForAdapter(adapter, type),
-    label = "DS: Extract and notify about " + operation + " completion of " + records.length + " of type " + type.typeKey;
+    label = 'DS: Extract and notify about ' + operation + ' completion of ' + records.length +
+            ' of type ' + type.typeKey;
 
-  Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
+  Ember.assert('Your adapter\'s ' + operation + ' method must return a promise, but it returned ' + promise, isThenable(promise));
 
   return promise.then(function(adapterPayload) {
     var payload;
@@ -88,7 +90,7 @@ function _bulkCommit(adapter, store, operation, type, records) {
       payload = adapterPayload;
     }
     forEach(records, function(record, index) {
-      store.didSaveRecord(record, payload[index]);
+      store.didSaveRecord(record, payload && payload[index]);
     });
     return records;
   }, function(reason) {
@@ -105,37 +107,23 @@ function _bulkCommit(adapter, store, operation, type, records) {
 
 function _findQuery(adapter, store, type, query, recordArray) {
   var promise = adapter.findQuery(store, type, query, recordArray),
-      serializer = serializerForAdapter(adapter, type),
-      label = "DS: Handle Adapter#findQuery of " + type;
+    serializer = serializerForAdapter(adapter, type),
+    label = 'DS: Handle Adapter#findQuery of ' + type;
 
   return Promise.cast(promise, label).then(function(adapterPayload) {
     var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
-    Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+    Ember.assert('The response from a findQuery must be an Array, not ' + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
 
-        recordArray.load(payload);
-        return recordArray;
-      }, null, "DS: Extract payload of findQuery " + type);
+    recordArray.load(payload);
+    return recordArray;
+  }, null, 'DS: Extract payload of findQuery ' + type);
 }
 
-function _findMany(adapter, store, type, ids, owner) {
-  var promise = adapter.findMany(store, type, ids, owner),
-      serializer = serializerForAdapter(adapter, type),
-      label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
-
-  return Promise.cast(promise, label).then(function(adapterPayload) {
-
-    var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
-    Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-    store.pushMany(type, payload);
-  }, null, "DS: Extract payload of " + type);
-} 
-
-
-var Store = DS.Store.extend({
-  removeIdsFromStore:function(ids){
+var Store = DS.Store.extend(Ember.Evented, {
+  removeIdsFromStore: function(ids) {
     var i;
-    if (ids instanceof Array){
-      for (i = 0; i > ids.length; i++){
+    if (ids instanceof Array) {
+      for (i = 0; i > ids.length; i++) {
 
       }
     }
@@ -149,8 +137,8 @@ var Store = DS.Store.extend({
 
     var adapter = this.adapterFor(type);
 
-    Ember.assert("You tried to load a query but you have no adapter (for " + type + ")", adapter);
-    Ember.assert("You tried to load a query but your adapter does not implement `findQuery`", adapter.findQuery);
+    Ember.assert('You tried to load a query but you have no adapter (for ' + type + ')', adapter);
+    Ember.assert('You tried to load a query but your adapter does not implement `findQuery`', adapter.findQuery);
 
     return promiseArray(_findQuery(adapter, this, type, query, array));
   },
@@ -172,12 +160,12 @@ var Store = DS.Store.extend({
 
     return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
       var meta = adapterPopulatedRecordArray.meta;
-      if (meta){
+      if (meta) {
         //TODO: maybe we should merge meta from server and not override it
-        array.set('meta', meta);
+        set(array, 'meta', meta);
       }
       return array;
-    }, null, "DS: Store#filter of " + type));
+    }, null, 'DS: Store#filter of ' + type));
   },
 
   flushPendingSave: function() {
@@ -191,7 +179,7 @@ var Store = DS.Store.extend({
         'createRecord',
         'deleteRecord',
         'updateRecord'
-      ], resolvers, i, j, k;
+      ], resolvers, i, j;
 
     forEach(pending, function(tuple) {
       var record = tuple[0], resolver = tuple[1],
@@ -242,7 +230,7 @@ var Store = DS.Store.extend({
             _bulkCommit(bulkDataAdapters[i], this,
               bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
               .then(function(records) {
-                forEach(records,function(record, index){
+                forEach(records, function(record, index) {
                   resolvers[index].resolve(record);
                 });
               });
