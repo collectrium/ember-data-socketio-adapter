@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.16
-// 7832245 (2014-06-03 15:06:48 +0300)
+// v0.1.19
+// cbeb824 (2014-08-11 17:19:30 +0300)
 
 
 (function(global) {
@@ -78,6 +78,7 @@ define("socket-adapter/adapter",
   function(__exports__) {
     "use strict";
     /*global io */
+    /*jshint camelcase: false */
     var get = Ember.get, set = Ember.set;
     var forEach = Ember.EnumerableUtils.forEach;
 
@@ -100,12 +101,102 @@ define("socket-adapter/adapter",
         };
 
         return (
-          S4() + S4() + "-" +
-          S4() + "-" +
-          S4() + "-" +
-          S4() + "-" +
+          S4() + S4() + '-' +
+          S4() + '-' +
+          S4() + '-' +
+          S4() + '-' +
           S4() + S4() + S4()
           );
+      },
+
+      /**
+       *
+       * @param request
+       * @returns {bool}
+       */
+      validateResponse: function (response, type) {
+        var isValid = true;
+        /**
+         * Validation for responses
+         * 'request_id' should be inside 'requestsPool'
+         */
+        if (response.hasOwnProperty('request_id')) {
+          var deffered = this.requestsPool[response.request_id];
+
+          if (!deffered){
+            isValid = false;
+          }
+
+          var requestType = deffered.requestType;
+            /* Validate response by request type */
+            // TODO: pluralize
+            // TODO: List responses validate
+
+          switch (requestType) {
+            case 'READ':
+              if (!response.hasOwnProperty(type)) {
+                isValid = false;
+              }
+              break;
+            case 'READ_LIST':
+              if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
+                isValid = false;
+              }
+              break;
+            case 'CREATE':
+              if (!response.hasOwnProperty(type)) {
+                isValid = false;
+              }
+              break;
+            case 'CREATE_LIST':
+              /*if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
+                isValid = false;
+              }*/
+              break;
+            case 'UPDATE':
+            if (!response.hasOwnProperty(type)) {
+                isValid = false;
+              }
+              break;
+            case 'UPDATE_LIST':
+              /*if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
+                isValid = false;
+              }*/
+              break;
+            case 'DELETE':
+              if (Object.keys(response).length !== 1) {
+                isValid = false;
+              }
+              break;
+            case 'DELETE_LIST':
+              if (Object.keys(response).length !== 1) {
+                isValid = false;
+              }
+              break;
+            default:
+              isValid = false;
+              break;
+          }
+        }
+
+        /**
+         * Validation for push notifications
+         * response should contains either 'payload' or 'ids' key
+         * 'payload' type should be Object
+         * 'ids' type should be Array
+         */
+        else {
+          if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
+            isValid = false;
+          }
+          if (response.hasOwnProperty('ids') && !(response.ids instanceof Array)){
+            isValid = false;
+          }
+          if (response.hasOwnProperty('payload') && !(response.payload instanceof Object)){
+            isValid = false;
+          }
+        }
+        return isValid;
       },
 
       /**
@@ -115,7 +206,8 @@ define("socket-adapter/adapter",
        * @returns {Ember.get|*|Object}
        */
       getConnection: function(type, options) {
-        var store = type.typeKey && type.store;
+        var store = type.typeKey && type.store,
+            scope = this;
         type = type.typeKey;
         var connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type),
@@ -138,28 +230,41 @@ define("socket-adapter/adapter",
           if (type) {
             //TODO: when should be reject promise hmmm?
             socketNS.on('message', function(response) {
-              if (response.request_id && requestsPool[response.request_id]) {
-                var resolver = requestsPool[response.request_id].resolve;
-                delete response.request_id;
-                Ember.run(null, resolver, response);
-                delete requestsPool[response.request_id];
-              }
-              /**
-               * Handling PUSH notifications
-               * Operations can be only multiple
-               */
-              else {
-                //if response contains only ids array it means that we receive DELETE
-                if (response.ids) {
-                  //remove all records from store without sending DELETE requests
-                    forEach(response.ids, function (id) {
-                      var record = store.getById(type, id);
-                      store.unloadRecord(record);
-                    });
+              var isResponseValid = scope.validateResponse(response, type);
+
+              if (!isResponseValid) {
+                if (response.request_id && requestsPool[response.request_id]) {
+                  var rejecter = requestsPool[response.request_id].reject;
+                  delete requestsPool[response.request_id];
+                  Ember.run(null, rejecter, response);
                 }
-                //we receive CREATE or UPDATE, ember-data will manage data itself
+              } else {
+                if (response.request_id && requestsPool[response.request_id]) {
+                  var resolver = requestsPool[response.request_id].resolve;
+                  delete response.request_id;
+                  delete requestsPool[response.request_id];
+                  Ember.run(null, resolver, response);
+                }
+                /**
+                 * Handling PUSH notifications
+                 * Operations can be only multiple
+                 */
                 else {
-                  store.pushPayload(type, response.payload);
+                  store.trigger('notification', response);
+                  //if response contains only ids array it means that we receive DELETE
+                  if (response.ids) {
+                    //remove all records from store without sending DELETE requests
+                      forEach(response.ids, function (id) {
+                        var record = store.getById(type, id);
+                        store.unloadRecord(record);
+                      });
+                  }
+                  //we receive CREATE or UPDATE, ember-data will manage data itself
+                  else {
+                    if (response.hasOwnProperty('payload')) {
+                      store.pushPayload(type, response.payload);
+                    }
+                  }
                 }
               }
             });
@@ -180,10 +285,11 @@ define("socket-adapter/adapter",
         var connection = this.getConnection(type),
           requestsPool = this.get('requestsPool'),
           requestId = this.generateRequestId(),
-          deffered = Ember.RSVP.defer("DS: SocketAdapter#emit " + requestType + " to " + type.typeKey);
+          deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
         if (!(hash instanceof Object)) {
           hash = {};
         }
+        deffered.requestType = requestType;
         hash.request_id = requestId;
         requestsPool[requestId] = deffered;
         connection.emit(requestType, hash);
@@ -339,7 +445,7 @@ define("socket-adapter/adapter",
 
       openSocket: function() {
         set(this, 'socketConnections', Ember.Object.create());
-        set(this, 'requestsPool', Ember.Object.create());
+        set(this, 'requestsPool', Ember.A([]));
         this.getConnection({
           resource: 'handshake'
         });
@@ -352,9 +458,11 @@ define("socket-adapter/belongs_to",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var get = Ember.get, set = Ember.set,
+    /*global Model*/
+    var get = Ember.get,
         isNone = Ember.isNone;
 
+    /*jshint -W079 */
     var Promise = Ember.RSVP.Promise;
 
     // copied from ember-data//lib/system/relationships/belongs_to.js
@@ -362,11 +470,11 @@ define("socket-adapter/belongs_to",
       return Ember.computed('data', function(key, value) {
         var data = get(this, 'data'),
             store = get(this, 'store'),
-            promiseLabel = "DS: Async belongsTo " + this + " : " + key,
+            promiseLabel = 'DS: Async belongsTo ' + this + ' : ' + key,
             promise;
 
         if (arguments.length === 2) {
-          Ember.assert("You can only add a '" + type + "' record to this relationship", !value || value instanceof store.modelFor(type));
+          Ember.assert('You can only add a \'' + type + '\' record to this relationship', !value || value instanceof store.modelFor(type));
           return value === undefined ? null : DS.PromiseObject.create({
             promise: Promise.cast(value, promiseLabel)
           });
@@ -396,7 +504,7 @@ define("socket-adapter/belongs_to",
         options = type;
         type = undefined;
       } else {
-        Ember.assert("The first argument DS.belongsTo must be a model type or string, like DS.belongsTo(App.Person)", !!type && (typeof type === 'string' || Model.detect(type)));
+        Ember.assert('The first argument DS.belongsTo must be a model type or string, like DS.belongsTo(App.Person)', !!type && (typeof type === 'string' || Model.detect(type)));
       }
 
       options = options || {};
@@ -428,7 +536,7 @@ define("socket-adapter/has_many",
     function asyncHasMany(type, options, meta, key) {
       /*jshint validthis:true */
       var relationship = this._relationships[key],
-      promiseLabel = "DS: Async hasMany " + this + " : " + key;
+      promiseLabel = 'DS: Async hasMany ' + this + ' : ' + key;
 
       if (!relationship) {
         var resolver = Ember.RSVP.defer(promiseLabel);
@@ -447,7 +555,7 @@ define("socket-adapter/has_many",
 
       var promise = relationship.get('promise').then(function() {
         return relationship;
-      }, null, "DS: Async hasMany records received");
+      }, null, 'DS: Async hasMany records received');
 
       return DS.PromiseArray.create({ promise: promise });
     }
@@ -473,12 +581,9 @@ define("socket-adapter/has_many",
 
       var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
 
-      return Ember.computed(function(key, value) {
+      return Ember.computed(function(key) {
         var records = get(this, 'data')[key],
         isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
-
-        var relationship = this._relationships[key],
-        promiseLabel = "DS: Async hasMany " + records + " : " + key;
 
         if (!isRecordsEveryEmpty) {
           return asyncHasMany.call(this, type, options, meta, key);  
@@ -486,7 +591,7 @@ define("socket-adapter/has_many",
 
         return buildRelationship(this, key, options, function(store, data) {
           var records = data[key];
-          Ember.assert("You looked up the '" + key + "' relationship on '" + this + "' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)", Ember.A(records).everyProperty('isEmpty', false));
+          Ember.assert('You looked up the \'' + key + '\' relationship on \'' + this + '\' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)', Ember.A(records).everyProperty('isEmpty', false));
           return store.findMany(this, data[key], meta.type);
         });
       }).property('data').meta(meta);
@@ -514,7 +619,7 @@ define("socket-adapter/json_serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var get = Ember.get, set = Ember.set, isNone = Ember.isNone;
+    var get = Ember.get;
 
     DS.JSONSerializer.reopen({
 
@@ -528,7 +633,7 @@ define("socket-adapter/json_serializer",
           belongsTo = get(record, key);
         } 
 
-        key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
+        key = this.keyForRelationship ? this.keyForRelationship(key, 'belongsTo') : key;
 
         if (record._data[key]) {
           json[key] = belongsTo;
@@ -553,7 +658,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = "0.1.16";
+    var VERSION = '0.1.19';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -604,6 +709,7 @@ define("socket-adapter/store",
     "use strict";
     var get = Ember.get, set = Ember.set;
     var forEach = Ember.EnumerableUtils.forEach;
+    /*jshint -W079 */
     var Promise = Ember.RSVP.Promise;
     var PromiseArray = Ember.ArrayProxy.extend(Ember.PromiseProxyMixin);
 
@@ -643,9 +749,9 @@ define("socket-adapter/store",
       var type = record.constructor,
         promise = adapter[operation](store, type, record),
         serializer = serializerForAdapter(adapter, type),
-        label = "DS: Extract and notify about " + operation + " completion of " + record;
+        label = 'DS: Extract and notify about ' + operation + ' completion of ' + record;
 
-      Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
+      Ember.assert('Your adapter\'s ' + operation + ' method must return a promise, but it returned ' + promise, isThenable(promise));
 
       return promise.then(function(adapterPayload) {
         var payload;
@@ -679,9 +785,10 @@ define("socket-adapter/store",
     function _bulkCommit(adapter, store, operation, type, records) {
       var promise = adapter[operation](store, type, records),
         serializer = serializerForAdapter(adapter, type),
-        label = "DS: Extract and notify about " + operation + " completion of " + records.length + " of type " + type.typeKey;
+        label = 'DS: Extract and notify about ' + operation + ' completion of ' + records.length +
+                ' of type ' + type.typeKey;
 
-      Ember.assert("Your adapter's '" + operation + "' method must return a promise, but it returned " + promise, isThenable(promise));
+      Ember.assert('Your adapter\'s ' + operation + ' method must return a promise, but it returned ' + promise, isThenable(promise));
 
       return promise.then(function(adapterPayload) {
         var payload;
@@ -709,37 +816,23 @@ define("socket-adapter/store",
 
     function _findQuery(adapter, store, type, query, recordArray) {
       var promise = adapter.findQuery(store, type, query, recordArray),
-          serializer = serializerForAdapter(adapter, type),
-          label = "DS: Handle Adapter#findQuery of " + type;
+        serializer = serializerForAdapter(adapter, type),
+        label = 'DS: Handle Adapter#findQuery of ' + type;
 
       return Promise.cast(promise, label).then(function(adapterPayload) {
         var payload = serializer.extract(store, type, adapterPayload, null, 'findQuery');
-        Ember.assert("The response from a findQuery must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
+        Ember.assert('The response from a findQuery must be an Array, not ' + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
 
-            recordArray.load(payload);
-            return recordArray;
-          }, null, "DS: Extract payload of findQuery " + type);
+        recordArray.load(payload);
+        return recordArray;
+      }, null, 'DS: Extract payload of findQuery ' + type);
     }
 
-    function _findMany(adapter, store, type, ids, owner) {
-      var promise = adapter.findMany(store, type, ids, owner),
-          serializer = serializerForAdapter(adapter, type),
-          label = "DS: Handle Adapter#findMany of " + type + 'by owner id ' + owner.get('id');
-
-      return Promise.cast(promise, label).then(function(adapterPayload) {
-
-        var payload = serializer.extract(store, type, adapterPayload, null, 'findMany');
-        Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
-        store.pushMany(type, payload);
-      }, null, "DS: Extract payload of " + type);
-    } 
-
-
-    var Store = DS.Store.extend({
-      removeIdsFromStore:function(ids){
+    var Store = DS.Store.extend(Ember.Evented, {
+      removeIdsFromStore: function(ids) {
         var i;
-        if (ids instanceof Array){
-          for (i = 0; i > ids.length; i++){
+        if (ids instanceof Array) {
+          for (i = 0; i > ids.length; i++) {
 
           }
         }
@@ -753,8 +846,8 @@ define("socket-adapter/store",
 
         var adapter = this.adapterFor(type);
 
-        Ember.assert("You tried to load a query but you have no adapter (for " + type + ")", adapter);
-        Ember.assert("You tried to load a query but your adapter does not implement `findQuery`", adapter.findQuery);
+        Ember.assert('You tried to load a query but you have no adapter (for ' + type + ')', adapter);
+        Ember.assert('You tried to load a query but your adapter does not implement `findQuery`', adapter.findQuery);
 
         return promiseArray(_findQuery(adapter, this, type, query, array));
       },
@@ -776,12 +869,12 @@ define("socket-adapter/store",
 
         return promiseArray(promise.then(function(adapterPopulatedRecordArray) {
           var meta = adapterPopulatedRecordArray.meta;
-          if (meta){
+          if (meta) {
             //TODO: maybe we should merge meta from server and not override it
-            array.set('meta', meta);
+            set(array, 'meta', meta);
           }
           return array;
-        }, null, "DS: Store#filter of " + type));
+        }, null, 'DS: Store#filter of ' + type));
       },
 
       flushPendingSave: function() {
@@ -795,7 +888,7 @@ define("socket-adapter/store",
             'createRecord',
             'deleteRecord',
             'updateRecord'
-          ], resolvers, i, j, k;
+          ], resolvers, i, j;
 
         forEach(pending, function(tuple) {
           var record = tuple[0], resolver = tuple[1],
@@ -846,7 +939,7 @@ define("socket-adapter/store",
                 _bulkCommit(bulkDataAdapters[i], this,
                   bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
                   .then(function(records) {
-                    forEach(records,function(record, index){
+                    forEach(records, function(record, index) {
                       resolvers[index].resolve(record);
                     });
                   });

@@ -407,13 +407,12 @@ test('Filterd Records should be added in store correctly', function () {
 });
 
 test('Response Validation should be work correctly', function () {
-  expect(3);
+  expect(1);
 
   store.findQuery('post', {id:1 , error: 'error'}).then(function (response) {
+    ok(false, 'Reject method don\'t should be worked');
   }, async(function (err) {
-    ok(err.get('message'), 'Server error', 'Message should be equal "Server error"');  
-    equal(err.get('valid'), undefined, 'Valid should be equal undefined');  
-    equal(err.get('request_id'), undefined, 'Request_id should be equal undefined');  
+    ok(true, 'Reject method should be worked');
   }));
 });
 
@@ -421,11 +420,23 @@ test('PUSH Message Validation should be correctly', function () {
   expect(1);
 
   var socketNS = adapter.getConnection(store.modelFor('post'));
-  serverPUSH = {
-    error: 'Server error'
-  };
+  serverPUSH = { payload: {
+    post: [
+      { id: 1, name: 'Javascript is awesome'}
+    ]
+  }};
 
+  store.on('notification', function(response) {
+    deepEqual(response, 
+              serverPUSH, 
+              'Push notification response shuold be equal to \n' +
+              '{' +
+              '  post: [' +
+              '    { id: 1, name: "Javascript is awesome" }' +
+              '  ]' +
+              '}'
+    );
+  });
+  
   socketNS.trigger('message', serverPUSH);
-
-  ok(true, true);
 });
