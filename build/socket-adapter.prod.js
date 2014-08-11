@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.19
-// cbeb824 (2014-08-11 17:19:30 +0300)
+// f41b2c4 (2014-08-11 17:22:44 +0300)
 
 
 (function(global) {
