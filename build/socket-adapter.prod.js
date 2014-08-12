@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.19
-// cbeb824 (2014-08-11 17:19:30 +0300)
+// v0.1.20
+// 5199d2a (2014-08-12 15:57:00 +0300)
 
 
 (function(global) {
@@ -658,7 +658,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = '0.1.19';
+    var VERSION = '0.1.20';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -782,6 +782,11 @@ define("socket-adapter/store",
       });
     }
 
+    //copied from ember-data store core
+    function coerceId(id) {
+      return id === null ? null : id+'';
+    }
+
     function _bulkCommit(adapter, store, operation, type, records) {
       var promise = adapter[operation](store, type, records),
         serializer = serializerForAdapter(adapter, type),
@@ -837,7 +842,30 @@ define("socket-adapter/store",
           }
         }
       },
+      find: function(type, id) {
+        ;
+        ;
 
+        if (arguments.length === 1) {
+          return this.findAll(type);
+        }
+
+        // We are passed a query instead of an id.
+        if (Ember.typeOf(id) === 'object') {
+          return promiseArray(this.findQuery(type, id).then(function(APRA){
+            /**
+             * Return mutable array
+             */
+            return Ember.ArrayProxy.create({
+              content: APRA.get('content'),
+              meta: APRA.get('meta'),
+              query: APRA.get('query'),
+              type: APRA.get('type')
+            });
+          }));
+        }
+        return this.findById(type, coerceId(id));
+      },
       findQuery: function(type, query) {
         type = this.modelFor(type);
 
