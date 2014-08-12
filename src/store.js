@@ -72,6 +72,11 @@ function promiseArray(promise, label) {
   });
 }
 
+//copied from ember-data store core
+function coerceId(id) {
+  return id === null ? null : id+'';
+}
+
 function _bulkCommit(adapter, store, operation, type, records) {
   var promise = adapter[operation](store, type, records),
     serializer = serializerForAdapter(adapter, type),
@@ -128,7 +133,7 @@ function _findMany(adapter, store, type, ids, owner) {
     Ember.assert("The response from a findMany must be an Array, not " + Ember.inspect(payload), Ember.typeOf(payload) === 'array');
     store.pushMany(type, payload);
   }, null, "DS: Extract payload of " + type);
-} 
+}
 
 
 var Store = DS.Store.extend({
@@ -140,7 +145,30 @@ var Store = DS.Store.extend({
       }
     }
   },
+  find: function(type, id) {
+    Ember.assert("You need to pass a type to the store's find method", arguments.length >= 1);
+    Ember.assert("You may not pass `" + id + "` as id to the store's find method", arguments.length === 1 || !Ember.isNone(id));
 
+    if (arguments.length === 1) {
+      return this.findAll(type);
+    }
+
+    // We are passed a query instead of an id.
+    if (Ember.typeOf(id) === 'object') {
+      return promiseArray(this.findQuery(type, id).then(function(APRA){
+        /**
+         * Return mutable array
+         */
+        return Ember.ArrayProxy.create({
+          content: APRA.get('content'),
+          meta: APRA.get('meta'),
+          query: APRA.get('query'),
+          type: APRA.get('type')
+        });
+      }));
+    }
+    return this.findById(type, coerceId(id));
+  },
   findQuery: function(type, query) {
     type = this.modelFor(type);
 
