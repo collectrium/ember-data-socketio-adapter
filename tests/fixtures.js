@@ -190,11 +190,7 @@ addFixture('Delete Post', {
   type: 'post',
   requestType: 'DELETE',
   hash: { id: '2' }
-}, {
-  post: {
-    id: 2
-  }
-});
+}, {});
 
 // Delete Posts
 addFixture('Delete Posts', {
@@ -203,11 +199,7 @@ addFixture('Delete Posts', {
   hash: {
     ids: ['1', '2']
   }
-}, {
-  post: {
-    id: [1, 2]
-  }
-});
+}, {});
 
 // Read Posts with releations
 addFixture('Read Posts with releations', {
@@ -242,7 +234,7 @@ addFixture('Find Comments by IDS = [1,2]', {
   }
 }, {
   payload: {
-    comments: [
+    comment: [
       { id: 1, name: 'Greet.' },
       { id: 2, name: 'Nice.' }
     ]
