@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.20
-// 5199d2a (2014-08-12 15:57:00 +0300)
+// v0.1.21
+// eab8bb3 (2014-08-13 15:43:48 +0300)
 
 
 (function(global) {
@@ -224,13 +224,13 @@ define("socket-adapter/adapter",
         //if we establish connection for the first time
         if (!socketNS) {
           if (type) {
-            address = address + type + '/';
+            address = address + type.decamelize() + '/';
           }
           socketNS = io.connect(address, options);
           if (type) {
             //TODO: when should be reject promise hmmm?
             socketNS.on('message', function(response) {
-              var isResponseValid = scope.validateResponse(response, type);
+              var isResponseValid = scope.validateResponse(response, type.decamelize());
 
               if (!isResponseValid) {
                 if (response.request_id && requestsPool[response.request_id]) {
@@ -658,7 +658,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = '0.1.20';
+    var VERSION = '0.1.21';
     var SA;
     if ('undefined' === typeof SA) {
 
