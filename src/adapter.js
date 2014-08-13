@@ -145,13 +145,13 @@ var SocketAdapter = DS.RESTAdapter.extend({
     //if we establish connection for the first time
     if (!socketNS) {
       if (type) {
-        address = address + type + '/';
+        address = address + type.decamelize() + '/';
       }
       socketNS = io.connect(address, options);
       if (type) {
         //TODO: when should be reject promise hmmm?
         socketNS.on('message', function(response) {
-          var isResponseValid = scope.validateResponse(response, type);
+          var isResponseValid = scope.validateResponse(response, type.decamelize());
 
           if (!isResponseValid) {
             if (response.request_id && requestsPool[response.request_id]) {
