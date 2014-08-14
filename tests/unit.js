@@ -155,9 +155,9 @@ test('Updat Post', function() {
     deepEqual(socketRequest, {
       type: 'post',
       requestType: 'UPDATE',
-      hash: { post: [
-        { id: '1', name: 'Javascript is awesome', comments: [], author: '1'}
-        ]
+      hash: { post: {
+          id: '1', name: 'Javascript is awesome', comments: [], author: '1'
+        }
       }
     },
     'Post UPDATE event socket request should be equal to \n' +

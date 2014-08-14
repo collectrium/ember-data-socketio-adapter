@@ -158,9 +158,9 @@ addFixture('Update Post', {
   type: 'post',
   requestType: 'UPDATE',
   hash: {
-    post: [
-      { id: '1', name: 'Javascript is awesome', comments: [], author: '1' }
-    ]
+    post: {
+      id: '1', name: 'Javascript is awesome', comments: [], author: '1'
+    }
   }
 }, {
   post: [
