@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.22
-// 511841a (2014-08-14 11:34:01 +0300)
+// v0.1.23
+// fba0dde (2014-08-14 11:50:17 +0300)
 
 
 (function(global) {
@@ -351,7 +351,7 @@ define("socket-adapter/adapter",
       createRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
           data = {};
-        data[type.typeKey] = serializer.serialize(record);
+        data[type.typeKey.decamelize()] = serializer.serialize(record);
 
         return this.send(type, 'CREATE', data);
       },
@@ -366,10 +366,10 @@ define("socket-adapter/adapter",
       createRecords: function(store, type, records) {
         var serializer = store.serializerFor(type.typeKey),
           data = {};
-        data[type.typeKey] = [];
+        data[type.typeKey.decamelize()] = [];
 
         forEach(records, function(record) {
-          data[type.typeKey].push(serializer.serialize(record));
+          data[type.typeKey.decamelize()].push(serializer.serialize(record));
         });
         return this.send(type, 'CREATE_LIST', data);
       },
@@ -384,9 +384,8 @@ define("socket-adapter/adapter",
       updateRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
           data = {};
-        data[type.typeKey] = [];
+        data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
 
-        data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
         return this.send(type, 'UPDATE', data);
       },
 
@@ -400,10 +399,10 @@ define("socket-adapter/adapter",
       updateRecords: function(store, type, records) {
         var serializer = store.serializerFor(type.typeKey),
           data = {};
-        data[type.typeKey] = [];
+        data[type.typeKey.decamelize()] = [];
 
         forEach(records, function(record) {
-          data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
+          data[type.typeKey.decamelize()].push(serializer.serialize(record, { includeId: true }));
         });
 
         return this.send(type, 'UPDATE_LIST', data);
@@ -657,7 +656,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = '0.1.22';
+    var VERSION = '0.1.23';
     var SA;
     if ('undefined' === typeof SA) {
 
