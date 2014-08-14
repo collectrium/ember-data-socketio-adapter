@@ -272,7 +272,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
   createRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
       data = {};
-    data[type.typeKey] = serializer.serialize(record);
+    data[type.typeKey.decamelize()] = serializer.serialize(record);
 
     return this.send(type, 'CREATE', data);
   },
@@ -287,10 +287,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
   createRecords: function(store, type, records) {
     var serializer = store.serializerFor(type.typeKey),
       data = {};
-    data[type.typeKey] = [];
+    data[type.typeKey.decamelize()] = [];
 
     forEach(records, function(record) {
-      data[type.typeKey].push(serializer.serialize(record));
+      data[type.typeKey.decamelize()].push(serializer.serialize(record));
     });
     return this.send(type, 'CREATE_LIST', data);
   },
@@ -305,9 +305,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
   updateRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
       data = {};
-    data[type.typeKey] = [];
+    data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
 
-    data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
     return this.send(type, 'UPDATE', data);
   },
 
@@ -321,10 +320,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
   updateRecords: function(store, type, records) {
     var serializer = store.serializerFor(type.typeKey),
       data = {};
-    data[type.typeKey] = [];
+    data[type.typeKey.decamelize()] = [];
 
     forEach(records, function(record) {
-      data[type.typeKey].push(serializer.serialize(record, { includeId: true }));
+      data[type.typeKey.decamelize()].push(serializer.serialize(record, { includeId: true }));
     });
 
     return this.send(type, 'UPDATE_LIST', data);
