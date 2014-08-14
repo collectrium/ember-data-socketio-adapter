@@ -272,9 +272,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
   createRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
       data = {};
-    data[type.typeKey] = [];
+    data[type.typeKey] = serializer.serialize(record);
 
-    data[type.typeKey].push(serializer.serialize(record));
     return this.send(type, 'CREATE', data);
   },
 

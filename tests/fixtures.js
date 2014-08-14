@@ -126,9 +126,9 @@ addFixture('Create Post', {
   type: 'post',
   requestType: 'CREATE',
   hash: {
-    post: [
-      { name: 'Socket.io is awesome', comments: [], author: '1' }
-    ]
+    post: {
+      name: 'Socket.io is awesome', comments: [], author: '1'
+    }
   }
 }, {
   post: [

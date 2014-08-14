@@ -89,9 +89,11 @@ test('Create Post', function() {
       deepEqual(socketRequest, {
           type: 'post',
           requestType: 'CREATE',
-          hash: {post: [
-            { author: '1', name: 'Socket.io is awesome', comments: []}
-          ]}
+          hash: {
+            post: {
+              author: '1', name: 'Socket.io is awesome', comments: []
+            }
+          }
         },
           'Post CREATE event socket request should be equal to \n' +
           '{ \n' +
@@ -256,7 +258,7 @@ test('Delete Post', function() {
 
     equal(posts.isEvery('isDeleted', true), true, 'every post should be deleted');
   }));
-  
+
 });
 
 test('Read Posts with releations', function() {
@@ -322,8 +324,8 @@ test('Read Post with async relations (hasMany)', function() {
 
 test('Read Post with async relations (belongs_to)', function() {
   expect(2);
-  store.pushPayload('post', getFixture('Find Post by ID = 1')); 
-  var post = store.getById('post', 1); 
+  store.pushPayload('post', getFixture('Find Post by ID = 1'));
+  var post = store.getById('post', 1);
 
   post.get('author').then(async(function(author) {
     equal(author.get('name'), 'Test', 'author name sholud be equal "Test"');
@@ -397,7 +399,7 @@ test('Filterd Records should be added in store correctly', function () {
   store.filter('post', {limit: 1}, function (post) {
     if (post.get('name') === 'Socket.io is awesome') {
       return true;
-    } 
+    }
   }).then(async(function (posts) {
     ok(posts.get('length'), 1, 'Posts Length should be equal 1');
     store.find('post', 3).then(async(function (post) {
@@ -427,8 +429,8 @@ test('PUSH Message Validation should be correctly', function () {
   }};
 
   store.on('notification', function(response) {
-    deepEqual(response, 
-              serverPUSH, 
+    deepEqual(response,
+              serverPUSH,
               'Push notification response shuold be equal to \n' +
               '{' +
               '  post: [' +
@@ -437,6 +439,6 @@ test('PUSH Message Validation should be correctly', function () {
               '}'
     );
   });
-  
+
   socketNS.trigger('message', serverPUSH);
 });
