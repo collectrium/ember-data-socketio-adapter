@@ -252,16 +252,17 @@ var Store = DS.Store.extend(Ember.Evented, {
             if (bulkRecords[i][j].length === 1) {
               bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this,
                 bulkDataOperationMap[j], bulkRecords[i][j][0]));
-              return;
             }
-            resolvers = bulkDataResolvers[i];
-            _bulkCommit(bulkDataAdapters[i], this,
-              bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
-              .then(function(records) {
-                forEach(records, function(record, index) {
-                  resolvers[index].resolve(record);
+            else{
+              resolvers = bulkDataResolvers[i];
+              _bulkCommit(bulkDataAdapters[i], this,
+                bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
+                .then(function(records) {
+                  forEach(records, function(record, index) {
+                    resolvers[index].resolve(record);
+                  });
                 });
-              });
+            }
           }
         }
       }
