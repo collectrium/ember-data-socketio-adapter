@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.23
-// fba0dde (2014-08-14 11:50:17 +0300)
+// v0.1.24
+// a84bbc7 (2014-08-18 18:40:27 +0300)
 
 
 (function(global) {
@@ -656,7 +656,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = '0.1.23';
+    var VERSION = '0.1.24';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -959,16 +959,17 @@ define("socket-adapter/store",
                 if (bulkRecords[i][j].length === 1) {
                   bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this,
                     bulkDataOperationMap[j], bulkRecords[i][j][0]));
-                  return;
                 }
-                resolvers = bulkDataResolvers[i];
-                _bulkCommit(bulkDataAdapters[i], this,
-                  bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
-                  .then(function(records) {
-                    forEach(records, function(record, index) {
-                      resolvers[index].resolve(record);
+                else{
+                  resolvers = bulkDataResolvers[i];
+                  _bulkCommit(bulkDataAdapters[i], this,
+                    bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
+                    .then(function(records) {
+                      forEach(records, function(record, index) {
+                        resolvers[index].resolve(record);
+                      });
                     });
-                  });
+                }
               }
             }
           }
