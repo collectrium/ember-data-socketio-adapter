@@ -151,7 +151,11 @@ var Store = DS.Store.extend(Ember.Evented, {
           content: APRA.get('content'),
           meta: APRA.get('meta'),
           query: APRA.get('query'),
-          type: APRA.get('type')
+          type: APRA.get('type'),
+          _APRA: APRA,
+          addObject: function(record){
+            this._APRA.manager.updateRecordArray(this._APRA, null, null, record);
+          }
         });
       }));
     }
