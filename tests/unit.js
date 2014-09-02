@@ -5,7 +5,7 @@ module('unit - Socket Adapter: ', {
     Post = DS.Model.extend({
       name: DS.attr('string'),
       comments: DS.hasMany('comment'),
-      author: DS.belongsTo('author', true)
+      author: DS.belongsTo('author')
     });
 
     Post.toString = function() {
@@ -68,7 +68,7 @@ test('Find Posts with meta', function() {
   var query1, query2;
   store.findQuery('post', {limit: 1}).then(async(function(posts) {
     query1 = posts;
-    store.findQuery('post', {limit: 2}).then(async(function (posts) {
+    store.findQuery('post', {limit: 2}).then(async(function(posts) {
       query2 = posts;
 
       equal(query1.get('meta.total'), 1, 'meta.total in first query should be equal 1');
@@ -144,7 +144,7 @@ test('Create Posts', function() {
   }));
 });
 
-test('Updat Post', function() {
+test('Update Post', function() {
   expect(1);
 
   store.pushPayload('post', getFixture('Find Post by ID = 1'));
@@ -153,21 +153,21 @@ test('Updat Post', function() {
   post.set('name', 'Javascript is awesome');
   post.save().then(async(function(post) {
     deepEqual(socketRequest, {
-      type: 'post',
-      requestType: 'UPDATE',
-      hash: { post: {
+        type: 'post',
+        requestType: 'UPDATE',
+        hash: { post: {
           id: '1', name: 'Javascript is awesome', comments: [], author: '1'
         }
-      }
-    },
-    'Post UPDATE event socket request should be equal to \n' +
-    '  {' +
-    '\t type: "post", \n' +
-    '\t requestType: "UPDATE", \n' +
-    '\t hash: { post: [ \n' +
-    '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
-    '\t ]}\n' +
-    '  }'
+        }
+      },
+        'Post UPDATE event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "UPDATE", \n' +
+        '\t hash: { post: [ \n' +
+        '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
+        '\t ]}\n' +
+        '  }'
     );
   }));
 });
@@ -183,23 +183,23 @@ test('Update Posts', function() {
 
   posts.save().then(async(function(posts) {
     deepEqual(socketRequest, {
-      type: 'post',
-      requestType: 'UPDATE_LIST',
-      hash: { post: [
-        { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
-        { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
+        type: 'post',
+        requestType: 'UPDATE_LIST',
+        hash: { post: [
+          { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
+          { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
         ]}
       },
-      'Post UPDATE_LIST event socket request should be equal to \n' +
-      '  {' +
-      '\t type: "post", \n' +
-      '\t requestType: "UPDATE_LIST", \n' +
-      '\t hash: { post: [ \n' +
-      '\t\t { id: "1", name: "Javascript is awesome", comments: [], author: "1" } \n' +
-      '\t\t { id: "2", name: "Javascript is awesome", comments: [], author: undefined } \n' +
-      '\t ]}\n' +
-      '  }'
-      );
+        'Post UPDATE_LIST event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "UPDATE_LIST", \n' +
+        '\t hash: { post: [ \n' +
+        '\t\t { id: "1", name: "Javascript is awesome", comments: [], author: "1" } \n' +
+        '\t\t { id: "2", name: "Javascript is awesome", comments: [], author: undefined } \n' +
+        '\t ]}\n' +
+        '  }'
+    );
   }));
 });
 
@@ -213,24 +213,24 @@ test('Delete Post', function() {
 
   post.save().then(async(function(response) {
     deepEqual(socketRequest, {
-      type: 'post',
-      requestType: 'DELETE',
-      hash: { id: '2' }
-    },
-    'Post DELETE event socket request should be equal to \n' +
-    '  {' +
-    '\t type: "post", \n' +
-    '\t requestType: "DELETE", \n' +
-    '\t hash: { id: "2" }\n' +
-    '\t ]}\n' +
-    '  }'
+        type: 'post',
+        requestType: 'DELETE',
+        hash: { id: '2' }
+      },
+        'Post DELETE event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "DELETE", \n' +
+        '\t hash: { id: "2" }\n' +
+        '\t ]}\n' +
+        '  }'
     );
     equal(response.get('id'), 2, 'post id should be equal 2');
   }));
 
 });
 
-  test('Delete Posts', function() {
+test('Delete Posts', function() {
   expect(2);
 
   store.pushPayload('post', getFixture('Find Posts without options').payload);
@@ -241,19 +241,19 @@ test('Delete Post', function() {
 
   posts.save().then(async(function(posts) {
     deepEqual(socketRequest, {
-      type: 'post',
-      requestType: 'DELETE_LIST',
-      hash: {
-        ids: ['1', '2']
-      }
-    },
-    'Posts DELETE_LIST event socket request should be equal to \n' +
-    '  {' +
-    '\t type: "post", \n' +
-    '\t requestType: "DELETE_LIST", \n' +
-    '\t hash: { ids: ["1", "2"] } \n' +
-    '\t ]} \n' +
-    '  }'
+        type: 'post',
+        requestType: 'DELETE_LIST',
+        hash: {
+          ids: ['1', '2']
+        }
+      },
+        'Posts DELETE_LIST event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "post", \n' +
+        '\t requestType: "DELETE_LIST", \n' +
+        '\t hash: { ids: ["1", "2"] } \n' +
+        '\t ]} \n' +
+        '  }'
     );
 
     equal(posts.isEvery('isDeleted', true), true, 'every post should be deleted');
@@ -266,9 +266,11 @@ test('Read Posts with releations', function() {
 
   store.find('post', {include: ['comments', 'author']}).then(async(function(posts) {
     equal(posts.get('length'), 2, 'posts length should be equal 2');
-    equal(posts.get('firstObject').get('comments').findProperty('id', '1').get('name'),
-      'Greet.',
-      'first comment to first post should be equal "Greet."');
+    posts.get('firstObject').get('comments').then(function(comments) {
+      equal(comments.findProperty('id', '1').get('name'),
+        'Greet.',
+        'first comment to first post should be equal "Greet."');
+    });
     posts.get('firstObject.author').then(function(author) {
       equal(author.get('name'), 'Test', 'author name sholud be equal "Test"');
     });
@@ -298,26 +300,28 @@ test('Read Post with async relations (hasMany)', function() {
   store.pushPayload('post', getFixture('Find Posts without options').payload);
 
   var posts = store.all('post');
-    var comments = posts.get('firstObject.comments');
-    comments.then(async(function(response) {
-      deepEqual(socketRequest, {
-          type: 'comment',
-          requestType: 'READ_LIST',
-          hash: {
-            ids: ["1", "2"]
+  var comments = posts.get('firstObject.comments');
+  comments.then(async(function(response) {
+    deepEqual(socketRequest, {
+        type: 'comment',
+        requestType: 'READ_LIST',
+        hash: {
+          query: {
+            id__in: ["1", "2"]
           }
-        },
-          'Comment READ_LIST event socket request should be equal to \n' +
-          '  {' +
-          '\t type: "comment", \n' +
-          '\t requestType: "READ_LIST", \n' +
-          '\t hash: { ids: ["1", "2"] } \n' +
-          '\t ]} \n' +
-          '  }'
-      );
+        }
+      },
+        'Comment READ_LIST event socket request should be equal to \n' +
+        '  {' +
+        '\t type: "comment", \n' +
+        '\t requestType: "READ_LIST", \n' +
+        '\t hash: { ids: ["1", "2"] } \n' +
+        '\t ]} \n' +
+        '  }'
+    );
 
-      var firstCommentName = response.get('firstObject').get('name');
-      equal(firstCommentName, 'Greet.', 'first comment should be equal "Greet."');
+    var firstCommentName = response.get('firstObject').get('name');
+    equal(firstCommentName, 'Greet.', 'first comment should be equal "Greet."');
 
   }));
 });
@@ -368,13 +372,13 @@ test('Create Posts from Server\'s PUSH', function() {
   ok(posts.isEvery('isLoaded', true), 'All posts should be loaded from store correctly');
 });
 
-test('Delete Posts from Server\'s PUSH', function () {
+test('Delete Posts from Server\'s PUSH', function() {
   var socketNS = adapter.getConnection(store.modelFor('post')),
-      posts;
+    posts;
   store.pushPayload('post', getFixture('Find Posts without options').payload);
 
   serverPUSH = {
-        ids: [1, 2]
+    ids: [1, 2]
   };
 
   socketNS.trigger('message', serverPUSH);
@@ -383,42 +387,42 @@ test('Delete Posts from Server\'s PUSH', function () {
   ok(posts.isEvery('isDeleted', true), 'All Posts should be deleted');
 });
 
-test('Filtered Records should be contains metadata', function () {
+test('Filtered Records should be contains metadata', function() {
   expect(1);
 
-  store.filter('post', {limit: 2}, function (post) {
+  store.filter('post', {limit: 2}, function(post) {
     return true;
-  }).then(async(function (posts) {
+  }).then(async(function(posts) {
     ok(posts.get('meta'), 'Records should be contains metadata');
   }));
 });
 
-test('Filterd Records should be added in store correctly', function () {
+test('Filterd Records should be added in store correctly', function() {
   expect(2);
 
-  store.filter('post', {limit: 1}, function (post) {
+  store.filter('post', {limit: 1}, function(post) {
     if (post.get('name') === 'Socket.io is awesome') {
       return true;
     }
-  }).then(async(function (posts) {
+  }).then(async(function(posts) {
     ok(posts.get('length'), 1, 'Posts Length should be equal 1');
-    store.find('post', 3).then(async(function (post) {
+    store.find('post', 3).then(async(function(post) {
       ok(posts.get('length'), 2, 'Post should be added in store correctly');
     }));
   }));
 });
 
-test('Response Validation should be work correctly', function () {
+test('Response Validation should be work correctly', function() {
   expect(1);
 
-  store.findQuery('post', {id:1 , error: 'error'}).then(function (response) {
+  store.findQuery('post', {id: 1, error: 'error'}).then(function(response) {
     ok(false, 'Reject method don\'t should be worked');
-  }, async(function (err) {
+  }, async(function(err) {
     ok(true, 'Reject method should be worked');
   }));
 });
 
-test('PUSH Message Validation should be correctly', function () {
+test('PUSH Message Validation should be correctly', function() {
   expect(1);
 
   var socketNS = adapter.getConnection(store.modelFor('post'));
@@ -430,13 +434,13 @@ test('PUSH Message Validation should be correctly', function () {
 
   store.on('notification', function(response) {
     deepEqual(response,
-              serverPUSH,
-              'Push notification response shuold be equal to \n' +
-              '{' +
-              '  post: [' +
-              '    { id: 1, name: "Javascript is awesome" }' +
-              '  ]' +
-              '}'
+      serverPUSH,
+        'Push notification response shuold be equal to \n' +
+        '{' +
+        '  post: [' +
+        '    { id: 1, name: "Javascript is awesome" }' +
+        '  ]' +
+        '}'
     );
   });
 

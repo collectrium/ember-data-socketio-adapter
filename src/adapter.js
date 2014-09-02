@@ -6,7 +6,7 @@ var forEach = Ember.EnumerableUtils.forEach;
 var SocketAdapter = DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
   bulkOperationsSupport: true,
-
+  coalesceFindRequests: true,
   socketConnections: null,
   requestsPool: null,
 
@@ -248,7 +248,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
 
   findMany: function(store, type, ids) {
-    return this.send(type, 'READ_LIST', {ids: ids});
+    //TODO: hash format TBD, imho should use {ids: ids}
+    return this.send(type, 'READ_LIST', {query: {id__in: ids}});
   },
 
   /**
