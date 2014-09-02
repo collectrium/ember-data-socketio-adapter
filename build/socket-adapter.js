@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.23
-// fba0dde (2014-08-14 11:50:17 +0300)
+// v0.1.26
+// e612aa8 (2014-09-02 17:04:06 +0300)
 
 
 (function(global) {
@@ -85,7 +85,7 @@ define("socket-adapter/adapter",
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
       bulkOperationsSupport: true,
-
+      coalesceFindRequests: true,
       socketConnections: null,
       requestsPool: null,
 
@@ -327,7 +327,8 @@ define("socket-adapter/adapter",
        */
 
       findMany: function(store, type, ids) {
-        return this.send(type, 'READ_LIST', {ids: ids});
+        //TODO: hash format TBD, imho should use {ids: ids}
+        return this.send(type, 'READ_LIST', {query: {id__in: ids}});
       },
 
       /**
@@ -456,67 +457,18 @@ define("socket-adapter/belongs_to",
   ["exports"],
   function(__exports__) {
     "use strict";
-    /*global Model*/
-    var get = Ember.get,
-        isNone = Ember.isNone;
-
-    /*jshint -W079 */
-    var Promise = Ember.RSVP.Promise;
-
-    // copied from ember-data//lib/system/relationships/belongs_to.js
-    function asyncBelongsTo(type, options, meta) {
-      return Ember.computed('data', function(key, value) {
-        var data = get(this, 'data'),
-            store = get(this, 'store'),
-            promiseLabel = 'DS: Async belongsTo ' + this + ' : ' + key,
-            promise;
-
-        if (arguments.length === 2) {
-          Ember.assert('You can only add a \'' + type + '\' record to this relationship', !value || value instanceof store.modelFor(type));
-          return value === undefined ? null : DS.PromiseObject.create({
-            promise: Promise.cast(value, promiseLabel)
-          });
-        }
-
-        var link = data.links && data.links[key],
-            belongsTo = data[key];
-
-        if(!isNone(belongsTo)) {
-          promise = store.fetchRecord(belongsTo) || Promise.cast(belongsTo, promiseLabel);
-          return DS.PromiseObject.create({
-            promise: promise
-          });
-        } else if (link) {
-          promise = store.findBelongsTo(this, link, meta);
-          return DS.PromiseObject.create({
-            promise: promise
-          });
-        } else {
-          return null;
-        }
-      }).meta(meta);
-    }
-
-    DS.belongsTo = function (type, options) {
-      if (typeof type === 'object') {
-        options = type;
-        type = undefined;
-      } else {
-        Ember.assert('The first argument DS.belongsTo must be a model type or string, like DS.belongsTo(App.Person)', !!type && (typeof type === 'string' || Model.detect(type)));
-      }
-
+    var oldBelongsTo = DS.belongsTo;
+    /**
+     * All belongsTo relations should be async
+     * @param type
+     * @param options
+     * @returns {*}
+     */
+    DS.belongsTo = function(type, options) {
       options = options || {};
-
-      var meta = {
-        type: type,
-        isRelationship: true,
-        options: options,
-        kind: 'belongsTo'
-      };
-
-      return asyncBelongsTo(type, options, meta);
+      options.async = true;
+      return oldBelongsTo(type, options);
     };
-
 
     __exports__["default"] = DS.belongsTo;
   });
@@ -524,91 +476,17 @@ define("socket-adapter/has_many",
   ["exports"],
   function(__exports__) {
     "use strict";
+    var oldHasMany = DS.hasMany;
     /**
-      @module ember-data
-    */
-
-    var get = Ember.get, set = Ember.set, setProperties = Ember.setProperties;
-
-    // copied from ember-data/lib/system/relationships/has_many.js
-    function asyncHasMany(type, options, meta, key) {
-      /*jshint validthis:true */
-      var relationship = this._relationships[key],
-      promiseLabel = 'DS: Async hasMany ' + this + ' : ' + key;
-
-      if (!relationship) {
-        var resolver = Ember.RSVP.defer(promiseLabel);
-        relationship = buildRelationship(this, key, options, function(store, data) {
-          var link = data.links && data.links[key];
-          var rel;
-          if (link) {
-            rel = store.findHasMany(this, link, meta, resolver);
-          } else {
-            rel = store.findMany(this, data[key], meta.type, resolver);
-          }
-          set(rel, 'promise', resolver.promise);
-          return rel;
-        });
-      }
-
-      var promise = relationship.get('promise').then(function() {
-        return relationship;
-      }, null, 'DS: Async hasMany records received');
-
-      return DS.PromiseArray.create({ promise: promise });
-    }
-
-    // copied from ember-data/lib/system/relationships/has_many.js
-    function buildRelationship(record, key, options, callback) {
-      var rels = record._relationships;
-
-      if (rels[key]) { return rels[key]; }
-
-      var data = get(record, 'data'),
-      store = get(record, 'store');
-
-      var relationship = rels[key] = callback.call(record, store, data);
-
-      return setProperties(relationship, {
-        owner: record, name: key, isPolymorphic: options.polymorphic
-      });
-    }
-
-    function hasRelationship(type, options) {
-      options = options || {};
-
-      var meta = { type: type, isRelationship: true, options: options, kind: 'hasMany' };
-
-      return Ember.computed(function(key) {
-        var records = get(this, 'data')[key],
-        isRecordsEveryEmpty = Ember.A(records).everyProperty('isEmpty', false);
-
-        if (!isRecordsEveryEmpty) {
-          return asyncHasMany.call(this, type, options, meta, key);  
-        }
-
-        return buildRelationship(this, key, options, function(store, data) {
-          var records = data[key];
-          Ember.assert('You looked up the \'' + key + '\' relationship on \'' + this + '\' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.hasMany({ async: true })`)', Ember.A(records).everyProperty('isEmpty', false));
-          return store.findMany(this, data[key], meta.type);
-        });
-      }).property('data').meta(meta);
-    }
-
-    /*
-      @namespace
-      @method hasMany
-      @for DS
-      @param {String or DS.Model} type the model type of the relationship
-      @param {Object} options a hash of options
-      @return {Ember.computed} relationship
-    */
+     * All hasMany relations should be async
+     * @param type
+     * @param options
+     * @returns {*}
+     */
     DS.hasMany = function(type, options) {
-      if (typeof type === 'object') {
-        options = type;
-        type = undefined;
-      }
-      return hasRelationship(type, options);
+      options = options || {};
+      options.async = true;
+      return oldHasMany(type, options);
     };
 
     __exports__["default"] = DS.hasMany;
@@ -656,7 +534,7 @@ define("socket-adapter/main",
     var adapter = __dependency3__["default"];
     var store = __dependency4__["default"];
 
-    var VERSION = '0.1.23';
+    var VERSION = '0.1.26';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -858,7 +736,11 @@ define("socket-adapter/store",
               content: APRA.get('content'),
               meta: APRA.get('meta'),
               query: APRA.get('query'),
-              type: APRA.get('type')
+              type: APRA.get('type'),
+              _APRA: APRA,
+              addObject: function(record){
+                this._APRA.manager.updateRecordArray(this._APRA, null, null, record);
+              }
             });
           }));
         }
@@ -959,16 +841,17 @@ define("socket-adapter/store",
                 if (bulkRecords[i][j].length === 1) {
                   bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this,
                     bulkDataOperationMap[j], bulkRecords[i][j][0]));
-                  return;
                 }
-                resolvers = bulkDataResolvers[i];
-                _bulkCommit(bulkDataAdapters[i], this,
-                  bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
-                  .then(function(records) {
-                    forEach(records, function(record, index) {
-                      resolvers[index].resolve(record);
+                else{
+                  resolvers = bulkDataResolvers[i];
+                  _bulkCommit(bulkDataAdapters[i], this,
+                    bulkDataOperationMap[j].pluralize(), bulkDataTypeMap[i], bulkRecords[i][j])
+                    .then(function(records) {
+                      forEach(records, function(record, index) {
+                        resolvers[index].resolve(record);
+                      });
                     });
-                  });
+                }
               }
             }
           }
