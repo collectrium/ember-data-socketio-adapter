@@ -13,3 +13,5 @@ tests/dist/
 tests/lib/tmpl.min.js
 
 npm-debug.log
+
+.DS_Store

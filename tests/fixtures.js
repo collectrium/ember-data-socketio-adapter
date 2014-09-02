@@ -12,7 +12,7 @@ window.getFixture = function(name) {
   });
   fix = JSON.stringify(fix);
   return JSON.parse(fix);
-}
+};
 
 window.addFixture = function(name, request, response) {
   var obj = {};
@@ -74,6 +74,24 @@ addFixture('Find Posts without options', {
     post: [
       { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 },
       { id: 2, name: 'Ember.js is awesome', comments: [], author: null }
+    ]
+  }
+});
+
+addFixture('Find Related Comments', {
+  type: 'comment',
+  requestType: 'READ_LIST',
+  hash: {
+    query:{
+      id__in: ["1", "2"]
+    }
+  }
+}, {
+  meta: {},
+  payload: {
+    comment: [
+      { id: 1, name: 'Greet.' },
+      { id: 2, name: 'Nice.' }
     ]
   }
 });
