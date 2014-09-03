@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.26
-// e612aa8 (2014-09-02 17:04:06 +0300)
+// v0.1.27
+// 6aa60af (2014-09-03 12:41:05 +0300)
 
 
 (function(global) {
@@ -453,88 +453,15 @@ define("socket-adapter/adapter",
 
     __exports__["default"] = SocketAdapter;
   });
-define("socket-adapter/belongs_to", 
-  ["exports"],
-  function(__exports__) {
-    "use strict";
-    var oldBelongsTo = DS.belongsTo;
-    /**
-     * All belongsTo relations should be async
-     * @param type
-     * @param options
-     * @returns {*}
-     */
-    DS.belongsTo = function(type, options) {
-      options = options || {};
-      options.async = true;
-      return oldBelongsTo(type, options);
-    };
-
-    __exports__["default"] = DS.belongsTo;
-  });
-define("socket-adapter/has_many", 
-  ["exports"],
-  function(__exports__) {
-    "use strict";
-    var oldHasMany = DS.hasMany;
-    /**
-     * All hasMany relations should be async
-     * @param type
-     * @param options
-     * @returns {*}
-     */
-    DS.hasMany = function(type, options) {
-      options = options || {};
-      options.async = true;
-      return oldHasMany(type, options);
-    };
-
-    __exports__["default"] = DS.hasMany;
-  });
-define("socket-adapter/json_serializer", 
-  ["exports"],
-  function(__exports__) {
-    "use strict";
-    var get = Ember.get;
-
-    DS.JSONSerializer.reopen({
-
-      serializeBelongsTo: function(record, json, relationship) {
-        var key = relationship.key;
-
-        var belongsTo;
-        if (record._data[key]) {
-          belongsTo = record._data[key].id;
-        } else {
-          belongsTo = get(record, key);
-        } 
-
-        key = this.keyForRelationship ? this.keyForRelationship(key, 'belongsTo') : key;
-
-        if (record._data[key]) {
-          json[key] = belongsTo;
-        } else {
-          json[key] = get(belongsTo, 'id');
-        }
-
-        if (relationship.options.polymorphic) {
-          this.serializePolymorphicType(record, json, relationship);
-        }
-      }
-
-    });
-
-    __exports__["default"] = DS.JSONSerializerer;
-  });
 define("socket-adapter/main", 
-  ["socket-adapter/json_serializer","socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","socket-adapter/has_many","socket-adapter/belongs_to","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  ["socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
     "use strict";
-    var serializer = __dependency2__["default"];
-    var adapter = __dependency3__["default"];
-    var store = __dependency4__["default"];
+    var serializer = __dependency1__["default"];
+    var adapter = __dependency2__["default"];
+    var store = __dependency3__["default"];
 
-    var VERSION = '0.1.26';
+    var VERSION = '0.1.27';
     var SA;
     if ('undefined' === typeof SA) {
 
