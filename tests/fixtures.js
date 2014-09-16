@@ -38,7 +38,7 @@ window.addFixture = function(name, request, response) {
 addFixture('Find Post by ID = 1', {
   type: 'post',
   requestType: 'READ',
-  hash: {id: "1"}
+  hash: {id: "1", include: ['comments'], fields: ['name']}
 }, { post: [
     { id: 1, name: 'Socket.io is awesome', comments: [1,2], author: 1 }
   ] 
@@ -48,7 +48,7 @@ addFixture('Find Post by ID = 1', {
 addFixture('Find Post by ID = 2', {
   type: 'post',
   requestType: 'READ',
-  hash: {id: "2"}
+  hash: {id: "2", include: ['comments'], fields: ['name']}
 }, { post: [
     { id: 2, name: 'Ember.js is awesome', comments: [] }
   ] 
@@ -57,7 +57,7 @@ addFixture('Find Post by ID = 2', {
 addFixture('Find Post by ID = 3', {
   type: 'post',
   requestType: 'READ',
-  hash: {id: "3"}
+  hash: {id: "3", include: ['comments'], fields: ['name']}
 }, { post: [
     { id: 3, name: 'Socket.io is awesome', comments: [] }
   ] 

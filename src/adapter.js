@@ -260,7 +260,19 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   find: function(store, type, id) {
-    return this.send(type, 'READ', {id: id});
+    var model = store.modelFor(type),
+      data = {
+        id: id
+      };
+    if (model._findByIdParams) {
+      if (model._findByIdParams.include) {
+        data['include'] = model._findByIdParams.include;
+      }
+      if (model._findByIdParams.fields) {
+        data['fields'] = model._findByIdParams.fields;
+      }
+    }
+    return this.send(type, 'READ', data);
   },
 
   /**
