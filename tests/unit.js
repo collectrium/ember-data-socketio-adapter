@@ -8,6 +8,17 @@ module('unit - Socket Adapter: ', {
       author: DS.belongsTo('author')
     });
 
+    Post.reopenClass({
+      _findByIdParams:{
+        include: [
+          'comments'
+        ],
+        fields: [
+          'name'
+        ]
+      }
+    });
+
     Post.toString = function() {
       return 'Post';
     };
@@ -37,12 +48,12 @@ test('Find Post by ID without options', function() {
   expect(2);
 
   store.find('post', 1).then(async(function(post) {
-    deepEqual(socketRequest, {type: 'post', requestType: 'READ', hash: {id: '1'}},
+    deepEqual(socketRequest, {type: 'post', requestType: 'READ', hash: {id: '1', include: ['comments'], fields: ['name']}},
         'Post READ event socket request should be equal to \n' +
         '{ \n' +
         'type: "post", \n' +
         'requestType: "READ", \n' +
-        'hash: {id: "1"} \n' +
+        'hash: {id: "1", include: ["comments"], fields: ["name"]} \n' +
         '}');
     ok(post.get('isLoaded'), 'post should be loaded in store correctly');
   }));
