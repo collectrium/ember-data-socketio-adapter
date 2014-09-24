@@ -75,7 +75,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
           }*/
           break;
         case 'UPDATE':
-        if (!response.hasOwnProperty(type)) {
+          if (Object.keys(response).length !== 1) {
             isValid = false;
           }
           break;
