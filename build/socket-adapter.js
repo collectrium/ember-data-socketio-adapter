@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.29
-// 6ae3613 (2014-09-24 13:32:24 +0300)
+// v0.1.30
+// 72f4d22 (2014-10-01 14:20:17 +0300)
 
 
 (function(global) {
@@ -79,15 +79,14 @@ define("socket-adapter/adapter",
     "use strict";
     /*global io */
     /*jshint camelcase: false */
-    var get = Ember.get, set = Ember.set;
-    var forEach = Ember.EnumerableUtils.forEach;
+    var get = Ember.get,
+      forEach = Ember.EnumerableUtils.forEach;
 
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
       bulkOperationsSupport: true,
       coalesceFindRequests: true,
-      socketConnections: null,
-      requestsPool: null,
+      requestsPool: [],
 
       /**
        * generate unique request id
@@ -111,109 +110,16 @@ define("socket-adapter/adapter",
 
       /**
        *
-       * @param request
-       * @returns {bool}
-       */
-      validateResponse: function (response, type) {
-        var isValid = true;
-        /**
-         * Validation for responses
-         * 'request_id' should be inside 'requestsPool'
-         */
-        if (response.hasOwnProperty('request_id')) {
-          var deffered = this.requestsPool[response.request_id];
-
-          if (!deffered){
-            isValid = false;
-          }
-
-          var requestType = deffered.requestType;
-            /* Validate response by request type */
-            // TODO: pluralize
-            // TODO: List responses validate
-
-          switch (requestType) {
-            case 'READ':
-              if (!response.hasOwnProperty(type)) {
-                isValid = false;
-              }
-              break;
-            case 'READ_LIST':
-              if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
-                isValid = false;
-              }
-              break;
-            case 'CREATE':
-              if (!response.hasOwnProperty(type)) {
-                isValid = false;
-              }
-              break;
-            case 'CREATE_LIST':
-              /*if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
-                isValid = false;
-              }*/
-              break;
-            case 'UPDATE':
-              if (Object.keys(response).length !== 1) {
-                isValid = false;
-              }
-              break;
-            case 'UPDATE_LIST':
-              /*if (!response.hasOwnProperty('payload') || !response.payload.hasOwnProperty(type) || !response.type instanceof Array ) {
-                isValid = false;
-              }*/
-              break;
-            case 'DELETE':
-              if (Object.keys(response).length !== 1) {
-                isValid = false;
-              }
-              break;
-            case 'DELETE_LIST':
-              if (Object.keys(response).length !== 1) {
-                isValid = false;
-              }
-              break;
-            default:
-              isValid = false;
-              break;
-          }
-        }
-
-        /**
-         * Validation for push notifications
-         * response should contains either 'payload' or 'ids' key
-         * 'payload' type should be Object
-         * 'ids' type should be Array
-         */
-        else {
-          if (!response.hasOwnProperty('payload') && !response.hasOwnProperty('ids')) {
-            isValid = false;
-          }
-          if (response.hasOwnProperty('ids') && !(response.ids instanceof Array)){
-            isValid = false;
-          }
-          if (response.hasOwnProperty('payload') && !(response.payload instanceof Object)){
-            isValid = false;
-          }
-        }
-        return isValid;
-      },
-
-      /**
-       *
        * @param type
        * @param options
        * @returns {Ember.get|*|Object}
        */
       getConnection: function(type, options) {
         var store = type.typeKey && type.store,
-            scope = this;
-        type = type.typeKey;
-        var connections = get(this, 'socketConnections'),
-          socketNS = type && get(connections, type),
           address = this.get('socketAddress') + '/',
-          requestsPool = this.get('requestsPool');
-
+          requestsPool = this.get('requestsPool'),
+          socketNS;
+        type = type.typeKey;
         if (arguments.length === 1) {
           options = {};
         }
@@ -221,55 +127,49 @@ define("socket-adapter/adapter",
           options = arguments[0];
         }
 
-        //if we establish connection for the first time
-        if (!socketNS) {
-          if (type) {
-            address = address + type.decamelize() + '/';
-          }
-          socketNS = io.connect(address, options);
-          if (type) {
-            //TODO: when should be reject promise hmmm?
-            socketNS.on('message', function(response) {
-              var isResponseValid = scope.validateResponse(response, type.decamelize());
-
-              if (!isResponseValid) {
-                if (response.request_id && requestsPool[response.request_id]) {
-                  var rejecter = requestsPool[response.request_id].reject;
-                  delete requestsPool[response.request_id];
-                  Ember.run(null, rejecter, response);
+        if (type) {
+          address = address + type.decamelize() + '/';
+        }
+        socketNS = io.connect(address, options);
+        if (type) {
+          socketNS.on('message', function(response) {
+            if (response.hasOwnProperty('errors')) {
+              if (response.request_id && requestsPool[response.request_id]) {
+                var rejecter = requestsPool[response.request_id].reject;
+                delete response.request_id;
+                delete requestsPool[response.request_id];
+                Ember.run(null, rejecter, response);
+              }
+            } else {
+              if (response.request_id && requestsPool[response.request_id]) {
+                var resolver = requestsPool[response.request_id].resolve;
+                delete response.request_id;
+                delete requestsPool[response.request_id];
+                Ember.run(null, resolver, response);
+              }
+              /**
+               * Handling PUSH notifications
+               * Operations can be only multiple
+               */
+              else {
+                store.trigger('notification', response);
+                //if response contains only ids array it means that we receive DELETE
+                if (response.ids) {
+                  //remove all records from store without sending DELETE requests
+                  forEach(response.ids, function(id) {
+                    var record = store.getById(type, id);
+                    store.unloadRecord(record);
+                  });
                 }
-              } else {
-                if (response.request_id && requestsPool[response.request_id]) {
-                  var resolver = requestsPool[response.request_id].resolve;
-                  delete response.request_id;
-                  delete requestsPool[response.request_id];
-                  Ember.run(null, resolver, response);
-                }
-                /**
-                 * Handling PUSH notifications
-                 * Operations can be only multiple
-                 */
+                //we receive CREATE or UPDATE, ember-data will manage data itself
                 else {
-                  store.trigger('notification', response);
-                  //if response contains only ids array it means that we receive DELETE
-                  if (response.ids) {
-                    //remove all records from store without sending DELETE requests
-                      forEach(response.ids, function (id) {
-                        var record = store.getById(type, id);
-                        store.unloadRecord(record);
-                      });
-                  }
-                  //we receive CREATE or UPDATE, ember-data will manage data itself
-                  else {
-                    if (response.hasOwnProperty('payload')) {
-                      store.pushPayload(type, response.payload);
-                    }
+                  if (response.hasOwnProperty('payload')) {
+                    store.pushPayload(type, response.payload);
                   }
                 }
               }
-            });
-            set(connections, type, socketNS);
-          }
+            }
+          });
         }
         return socketNS;
       },
@@ -455,8 +355,6 @@ define("socket-adapter/adapter",
 
 
       openSocket: function() {
-        set(this, 'socketConnections', Ember.Object.create());
-        set(this, 'requestsPool', Ember.A([]));
         this.getConnection({
           resource: 'handshake'
         });
@@ -473,7 +371,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.29';
+    var VERSION = '0.1.30';
     var SA;
     if ('undefined' === typeof SA) {
 
