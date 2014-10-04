@@ -226,7 +226,6 @@ var Store = DS.Store.extend(Ember.Evented, {
       } else {
         operation = 'updateRecord';
       }
-
       bulkSupport = get(adapter, 'bulkOperationsSupport')[operation];
 
       if (bulkSupport) {
