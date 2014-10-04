@@ -217,8 +217,7 @@ var Store = DS.Store.extend(Ember.Evented, {
       var record = tuple[0], resolver = tuple[1],
         type = record.constructor,
         adapter = this.adapterFor(record.constructor),
-        bulkSupport = get(adapter, 'bulkOperationsSupport'),
-        operation, typeIndex, operationIndex;
+        bulkSupport, operation, typeIndex, operationIndex;
 
       if (get(record, 'isNew')) {
         operation = 'createRecord';
@@ -227,6 +226,8 @@ var Store = DS.Store.extend(Ember.Evented, {
       } else {
         operation = 'updateRecord';
       }
+      bulkSupport = get(adapter, 'bulkOperationsSupport')[operation];
+
       if (bulkSupport) {
         operationIndex = bulkDataOperationMap.indexOf(operation);
         typeIndex = bulkDataTypeMap.indexOf(type);

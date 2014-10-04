@@ -5,7 +5,12 @@ var get = Ember.get,
 
 var SocketAdapter = DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
-  bulkOperationsSupport: true,
+  bulkOperationsSupport: {
+    createRecord: true,
+    updateRecord: false,
+    deleteRecord: true
+  },
+
   coalesceFindRequests: true,
   requestsPool: [],
 
