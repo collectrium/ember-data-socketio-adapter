@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.30
-// 72f4d22 (2014-10-01 14:20:17 +0300)
+// v0.1.31
+// 28461f9 (2014-10-01 14:23:16 +0300)
 
 
 (function(global) {
@@ -84,7 +84,12 @@ define("socket-adapter/adapter",
 
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
-      bulkOperationsSupport: true,
+      bulkOperationsSupport: {
+        createRecord: true,
+        updateRecord: false,
+        deleteRecord: true
+      },
+
       coalesceFindRequests: true,
       requestsPool: [],
 
@@ -371,7 +376,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.30';
+    var VERSION = '0.1.31';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -639,8 +644,7 @@ define("socket-adapter/store",
           var record = tuple[0], resolver = tuple[1],
             type = record.constructor,
             adapter = this.adapterFor(record.constructor),
-            bulkSupport = get(adapter, 'bulkOperationsSupport'),
-            operation, typeIndex, operationIndex;
+            bulkSupport, operation, typeIndex, operationIndex;
 
           if (get(record, 'isNew')) {
             operation = 'createRecord';
@@ -649,6 +653,9 @@ define("socket-adapter/store",
           } else {
             operation = 'updateRecord';
           }
+
+          bulkSupport = get(adapter, 'bulkOperationsSupport')[operation];
+
           if (bulkSupport) {
             operationIndex = bulkDataOperationMap.indexOf(operation);
             typeIndex = bulkDataTypeMap.indexOf(type);
