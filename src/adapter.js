@@ -105,9 +105,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
       if (type) {
         set(connections, type, socketNS);
       }
-    }
-    if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected) {
-      socketNS.socket.connect();
+    } else {
+      if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected && !socketNS.socket.connecting) {
+        socketNS.socket.connect();
+      }
     }
     return socketNS;
   },
