@@ -100,6 +100,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
             }
           }
         });
+      } else {
+        if (!socketNS.socket.connected) {
+          socketNS.socket.connect();
+        }
       }
       set(connections, type, socketNS);
     }
