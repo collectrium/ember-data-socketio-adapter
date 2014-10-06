@@ -1,6 +1,6 @@
 /*global io */
 /*jshint camelcase: false */
-var get = Ember.get,
+var get = Ember.get, set = Ember.set,
   forEach = Ember.EnumerableUtils.forEach;
 
 var SocketAdapter = DS.RESTAdapter.extend({
@@ -12,6 +12,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
   },
 
   coalesceFindRequests: true,
+  socketConnections: Ember.Object.create(),
   requestsPool: [],
 
   /**
@@ -44,8 +45,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
     var store = type.typeKey && type.store,
       address = this.get('socketAddress') + '/',
       requestsPool = this.get('requestsPool'),
-      socketNS;
-    type = type.typeKey;
+      type = type.typeKey,
+      connections = get(this, 'socketConnections'),
+      socketNS = type && get(connections, type);
+
     if (arguments.length === 1) {
       options = {};
     }
@@ -53,49 +56,52 @@ var SocketAdapter = DS.RESTAdapter.extend({
       options = arguments[0];
     }
 
-    if (type) {
-      address = address + type.decamelize() + '/';
-    }
-    socketNS = io.connect(address, options);
-    if (type) {
-      socketNS.on('message', function(response) {
-        if (response.hasOwnProperty('errors')) {
-          if (response.request_id && requestsPool[response.request_id]) {
-            var rejecter = requestsPool[response.request_id].reject;
-            delete response.request_id;
-            delete requestsPool[response.request_id];
-            Ember.run(null, rejecter, response);
-          }
-        } else {
-          if (response.request_id && requestsPool[response.request_id]) {
-            var resolver = requestsPool[response.request_id].resolve;
-            delete response.request_id;
-            delete requestsPool[response.request_id];
-            Ember.run(null, resolver, response);
-          }
-          /**
-           * Handling PUSH notifications
-           * Operations can be only multiple
-           */
-          else {
-            store.trigger('notification', response);
-            //if response contains only ids array it means that we receive DELETE
-            if (response.ids) {
-              //remove all records from store without sending DELETE requests
-              forEach(response.ids, function(id) {
-                var record = store.getById(type, id);
-                store.unloadRecord(record);
-              });
+    if (!socketNS) {
+      if (type) {
+        address = address + type.decamelize() + '/';
+      }
+      socketNS = io.connect(address, options);
+      if (type) {
+        socketNS.on('message', function(response) {
+          if (response.hasOwnProperty('errors')) {
+            if (response.request_id && requestsPool[response.request_id]) {
+              var rejecter = requestsPool[response.request_id].reject;
+              delete response.request_id;
+              delete requestsPool[response.request_id];
+              Ember.run(null, rejecter, response);
             }
-            //we receive CREATE or UPDATE, ember-data will manage data itself
+          } else {
+            if (response.request_id && requestsPool[response.request_id]) {
+              var resolver = requestsPool[response.request_id].resolve;
+              delete response.request_id;
+              delete requestsPool[response.request_id];
+              Ember.run(null, resolver, response);
+            }
+            /**
+             * Handling PUSH notifications
+             * Operations can be only multiple
+             */
             else {
-              if (response.hasOwnProperty('payload')) {
-                store.pushPayload(type, response.payload);
+              store.trigger('notification', response);
+              //if response contains only ids array it means that we receive DELETE
+              if (response.ids) {
+                //remove all records from store without sending DELETE requests
+                forEach(response.ids, function(id) {
+                  var record = store.getById(type, id);
+                  store.unloadRecord(record);
+                });
+              }
+              //we receive CREATE or UPDATE, ember-data will manage data itself
+              else {
+                if (response.hasOwnProperty('payload')) {
+                  store.pushPayload(type, response.payload);
+                }
               }
             }
           }
-        }
-      });
+        });
+      }
+      set(connections, type, socketNS);
     }
     return socketNS;
   },
