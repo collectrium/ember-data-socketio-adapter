@@ -397,7 +397,6 @@ test('Create Posts from Server\'s PUSH', function() {
         ]
       }};
   socketNS.trigger('message', serverPUSH);
-
   var posts = store.all('post');
   ok(posts.isEvery('isLoaded', true), 'All posts should be loaded from store correctly');
 });
@@ -405,16 +404,16 @@ test('Create Posts from Server\'s PUSH', function() {
 test('Delete Posts from Server\'s PUSH', function() {
   var socketNS = adapter.getConnection(store.modelFor('post')),
     posts;
-  store.pushPayload('post', getFixture('Find Posts without options').payload);
+
+  store.unloadAll('post');
 
   serverPUSH = {
     ids: [1, 2]
   };
 
   socketNS.trigger('message', serverPUSH);
-
   posts = store.all('post');
-  ok(posts.isEvery('isDeleted', true), 'All Posts should be deleted');
+  ok(posts.content.isEvery('isDeleted', true), 'All Posts should be deleted');
 });
 
 test('Filtered Records should be contains metadata', function() {

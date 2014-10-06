@@ -42,6 +42,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.get|*|Object}
    */
   getConnection: function(type, options) {
+    /*jshint -W004 */
     var store = type.typeKey && type.store,
       address = this.get('socketAddress') + '/',
       requestsPool = this.get('requestsPool'),
@@ -100,8 +101,13 @@ var SocketAdapter = DS.RESTAdapter.extend({
             }
           }
         });
+      } 
+      if (type) {
+        set(connections, type, socketNS);
       }
-      set(connections, type, socketNS);
+    }
+    if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected) {
+      socketNS.socket.connect();
     }
     return socketNS;
   },
