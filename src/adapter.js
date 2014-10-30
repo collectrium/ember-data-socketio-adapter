@@ -127,6 +127,11 @@ var SocketAdapter = DS.RESTAdapter.extend({
     if (!(hash instanceof Object)) {
       hash = {};
     }
+
+    connection.on('error', function () {
+      Ember.run(null, deffered.reject, 'User not authenticated');
+    });
+
     deffered.requestType = requestType;
     hash.request_id = requestId;
     requestsPool[requestId] = deffered;
