@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.33
-// cbb7dfe (2014-10-06 18:29:15 +0300)
+// v0.1.36
+// 136c9f9 (2014-11-01 17:10:34 +0300)
 
 
 (function(global) {
@@ -135,8 +135,13 @@ define("socket-adapter/adapter",
         if (!type) {
           options = arguments[0];
         }
-
-        if (!socketNS) {
+        if (socketNS) {
+          //TODO: not sure that manually socket reconnecting is required
+          if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected && !socketNS.socket.connecting) {
+            socketNS.socket.connect();
+          }
+        }
+        else {
           if (type) {
             address = address + type.decamelize() + '/';
           }
@@ -180,13 +185,9 @@ define("socket-adapter/adapter",
                 }
               }
             });
-          } 
+          }
           if (type) {
             set(connections, type, socketNS);
-          }
-        } else {
-          if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected && !socketNS.socket.connecting) {
-            socketNS.socket.connect();
           }
         }
         return socketNS;
@@ -207,6 +208,16 @@ define("socket-adapter/adapter",
         if (!(hash instanceof Object)) {
           hash = {};
         }
+        /**
+         * Handshake was aborted
+         */
+        connection.on('error', function () {
+            Ember.run(null, deffered.reject, {
+              code:'auth-failed',
+              name: 'Authentication failed',
+              message: 'Invalid session token'
+            });
+        });
         deffered.requestType = requestType;
         hash.request_id = requestId;
         requestsPool[requestId] = deffered;
@@ -389,7 +400,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.33';
+    var VERSION = '0.1.36';
     var SA;
     if ('undefined' === typeof SA) {
 

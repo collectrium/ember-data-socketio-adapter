@@ -129,6 +129,16 @@ var SocketAdapter = DS.RESTAdapter.extend({
     if (!(hash instanceof Object)) {
       hash = {};
     }
+    /**
+     * Handshake was aborted
+     */
+    connection.on('error', function () {
+        Ember.run(null, deffered.reject, {
+          code:'auth-failed',
+          name: 'Authentication failed',
+          message: 'Invalid session token'
+        });
+    });
     deffered.requestType = requestType;
     hash.request_id = requestId;
     requestsPool[requestId] = deffered;
