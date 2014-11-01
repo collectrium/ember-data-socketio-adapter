@@ -56,8 +56,13 @@ var SocketAdapter = DS.RESTAdapter.extend({
     if (!type) {
       options = arguments[0];
     }
-
-    if (!socketNS) {
+    if (socketNS) {
+      //TODO: not sure that manually socket reconnecting is required
+      if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected && !socketNS.socket.connecting) {
+        socketNS.socket.connect();
+      }
+    }
+    else {
       if (type) {
         address = address + type.decamelize() + '/';
       }
@@ -101,13 +106,9 @@ var SocketAdapter = DS.RESTAdapter.extend({
             }
           }
         });
-      } 
+      }
       if (type) {
         set(connections, type, socketNS);
-      }
-    } else {
-      if (socketNS.hasOwnProperty('socket') && !socketNS.socket.connected && !socketNS.socket.connecting) {
-        socketNS.socket.connect();
       }
     }
     return socketNS;
