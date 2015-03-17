@@ -170,7 +170,8 @@ var Store = DS.Store.extend(Ember.Evented, {
     var adapter = this.adapterFor(type);
 
     Ember.assert('You tried to load a query but you have no adapter (for ' + type + ')', adapter);
-    Ember.assert('You tried to load a query but your adapter does not implement `findQuery`', adapter.findQuery);
+    // Failed on loosing context
+    // Ember.assert('You tried to load a query but your adapter does not implement `findQuery`', adapter.findQuery);
 
     return promiseArray(_findQuery(adapter, this, type, query, array));
   },
