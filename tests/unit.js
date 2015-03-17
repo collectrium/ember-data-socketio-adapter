@@ -4,8 +4,8 @@ module('unit - Socket Adapter: ', {
   setup: function() {
     Post = DS.Model.extend({
       name: DS.attr('string'),
-      comments: DS.hasMany('comment'),
-      author: DS.belongsTo('author')
+      comments: DS.hasMany('comment', {async: true}),
+      author: DS.belongsTo('author', {async: true})
     });
 
     Post.reopenClass({
@@ -59,7 +59,6 @@ test('Find Post by ID without options', function() {
   }));
 });
 
-
 test('Find All Posts without options', function() {
   expect(2);
 
@@ -89,38 +88,43 @@ test('Find Posts with meta', function() {
 });
 
 test('Create Post', function() {
-  expect(2);
+  expect(3);
 
   store.find('author', 1).then(async(function(author) {
+    ok(author, 'Should find author #1');
     var post = store.createRecord('post', {
       author: author,
       name: 'Socket.io is awesome'
     });
-    post.save().then(async(function(post) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'CREATE',
-          hash: {
-            post: {
-              author: '1', name: 'Socket.io is awesome', comments: []
+
+    post.get('author').then(function(){
+      post.save().then(async(function(post) {
+        deepEqual(socketRequest, {
+            type: 'post',
+            requestType: 'CREATE',
+            hash: {
+              post: {
+                author: '1', name: 'Socket.io is awesome', comments: []
+              }
             }
-          }
-        },
+          },
           'Post CREATE event socket request should be equal to \n' +
           '{ \n' +
           'type: "post", \n' +
           'requestType: "CREATE", \n' +
           'hash: {author: "1", name: "Socket.io is awesome", comments: [] } \n' +
           '}');
-      ok(post.get('isLoaded'), 'post should be loaded in store correctly');
-    }));
-  }));
+        ok(post.get('isLoaded'), 'post should be loaded in store correctly');
+      }, 1000));
+    });
+
+  }, 2000));
 });
 
-
 test('Create Posts', function() {
-  expect(2);
+  expect(3);
   store.find('author', 1).then(async(function(author) {
+    ok(!!author, 'Should find author #1');
     var posts = [
       store.createRecord('post', {
         author: author,
@@ -130,15 +134,16 @@ test('Create Posts', function() {
         author: author,
         name: 'Ember.js is awesome'
       })];
-    Ember.RSVP.all(posts.invoke('save')).then(async(function(posts) {
-      deepEqual(socketRequest, {
-          type: 'post',
-          requestType: 'CREATE_LIST',
-          hash: {post: [
-            {name: 'Socket.io is awesome', comments: [], author: '1' },
-            {name: 'Ember.js is awesome', comments: [], author: '1' }
-          ]}
-        },
+    Ember.RSVP.all(posts.invoke('get', 'author')).then(async(function() {
+      Ember.RSVP.all(posts.invoke('save')).then(async(function(posts) {
+        deepEqual(socketRequest, {
+            type: 'post',
+            requestType: 'CREATE_LIST',
+            hash: {post: [
+              {name: 'Socket.io is awesome', comments: [], author: '1' },
+              {name: 'Ember.js is awesome', comments: [], author: '1' }
+            ]}
+          },
           'Post CREATE_LIST event socket request should be equal to \n' +
           '{ \n' +
           'type: "post", \n' +
@@ -148,31 +153,32 @@ test('Create Posts', function() {
           '{name: "Ember.js is awesome", comments: [], author: "1" } \n' +
           ']} \n' +
           '}'
-      );
+        );
 
-      ok(posts.isEvery('isLoaded', true), 'posts should be loaded in store correctly');
+        ok(posts.isEvery('isLoaded', true), 'posts should be loaded in store correctly');
+      }));
     }));
+
   }));
 });
-//BROKEN
+
 test('Update Post', function() {
   expect(1);
-  ok(true);
-  console.log('BROKEN');
-  return;
   store.pushPayload('post', getFixture('Find Post by ID = 1'));
   var post = store.getById('post', 1);
 
   post.set('name', 'Javascript is awesome');
-  post.save().then(async(function(post) {
-    deepEqual(socketRequest, {
-        type: 'post',
-        requestType: 'UPDATE',
-        hash: { post: {
-          id: '1', name: 'Javascript is awesome', comments: [], author: '1'
-        }
-        }
-      },
+
+  post.get('author').then(async(function() {
+    post.save().then(async(function(post) {
+      deepEqual(socketRequest, {
+          type: 'post',
+          requestType: 'UPDATE',
+          hash: { post: {
+            id: '1', name: 'Javascript is awesome', comments: [], author: '1'
+          }
+          }
+        },
         'Post UPDATE event socket request should be equal to \n' +
         '  {' +
         '\t type: "post", \n' +
@@ -181,31 +187,33 @@ test('Update Post', function() {
         '\t\t { id: "1", name: "Javascript is awesome", comments: [] } \n' +
         '\t ]}\n' +
         '  }'
-    );
+      );
+    }));
   }));
 });
 
-//BROKEN
 test('Update Posts', function() {
   expect(1);
   ok(true);
-  console.log('BROKEN');
+  console.log('[BROKEN]:\t UPDATE_LIST not implemented');
   return;
+
   store.pushPayload('post', getFixture('Find Posts without options').payload);
 
   var posts = store.all('post');
 
   posts.setEach('name', 'Javascript is awesome');
 
-  posts.save().then(async(function(posts) {
-    deepEqual(socketRequest, {
-        type: 'post',
-        requestType: 'UPDATE_LIST',
-        hash: { post: [
-          { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
-          { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
-        ]}
-      },
+  Ember.RSVP.all(posts.invoke('get', 'author')).then(async(function() {
+    posts.save().then(async(function(posts) {
+      deepEqual(socketRequest, {
+          type: 'post',
+          requestType: 'UPDATE_LIST',
+          hash: { post: [
+            { id: '1', name: 'Javascript is awesome', comments: [], author: '1' },
+            { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
+          ]}
+        },
         'Post UPDATE_LIST event socket request should be equal to \n' +
         '  {' +
         '\t type: "post", \n' +
@@ -215,7 +223,8 @@ test('Update Posts', function() {
         '\t\t { id: "2", name: "Javascript is awesome", comments: [], author: undefined } \n' +
         '\t ]}\n' +
         '  }'
-    );
+      );
+    }));
   }));
 });
 
@@ -277,13 +286,9 @@ test('Delete Posts', function() {
 
 });
 
-//BROKEN
 test('Read Posts with releations', function() {
-  //expect(4);
-  expect(1);
-  ok(true);
-  console.log('BROKEN');
-  return;
+  expect(4);
+
   store.find('post', {include: ['comments', 'author']}).then(async(function(posts) {
     equal(posts.get('length'), 2, 'posts length should be equal 2');
     posts.get('firstObject').get('comments').then(function(comments) {
@@ -291,13 +296,13 @@ test('Read Posts with releations', function() {
         'Greet.',
         'first comment to first post should be equal "Greet."');
     });
+
     posts.get('firstObject.author').then(function(author) {
       equal(author.get('name'), 'Test', 'author name sholud be equal "Test"');
     });
 
     var view;
     Ember.run(function() {
-
       view = Em.View.create({
         template: Em.Handlebars.compile('{{view.content.firstObject.author.name}}'),
         content: posts
@@ -315,13 +320,8 @@ test('Read Posts with releations', function() {
   }));
 });
 
-//BROKEN
 test('Read Post with async relations (hasMany)', function() {
-  //expect(2);
-  expect(1);
-  ok(true);
-  console.log('BROKEN');
-  return;
+  expect(2);
 
   store.pushPayload('post', getFixture('Find Posts without options').payload);
 
@@ -351,13 +351,9 @@ test('Read Post with async relations (hasMany)', function() {
 
   }));
 });
-//BROKEN
+
 test('Read Post with async relations (belongs_to)', function() {
-  //expect(2);
-  expect(1);
-  ok(true);
-  console.log('BROKEN');
-  return;
+  expect(2);
   store.pushPayload('post', getFixture('Find Post by ID = 1'));
   var post = store.getById('post', 1);
 

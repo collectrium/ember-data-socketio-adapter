@@ -177,7 +177,7 @@ addFixture('Update Post', {
   requestType: 'UPDATE',
   hash: {
     post: {
-      id: '1', name: 'Javascript is awesome', comments: [], author: '1'
+      id: '1', name: 'Javascript is awesome', comments: ["1", "2"], author: '1'
     }
   }
 }, {
@@ -192,13 +192,13 @@ addFixture('Update Posts', {
   requestType: 'UPDATE_LIST',
   hash: {
     post: [
-      { id: '1', name: 'Javascript is awesome', comments: [], author: "1" },
+      { id: '1', name: 'Javascript is awesome', comments: ["1", "2"], author: "1" },
       { id: '2', name: 'Javascript is awesome', comments: [], author: undefined }
     ]
   }  
 }, {
   post: [
-    { id: 1, name: 'Javascript is awesome', comments: [], author: 1 },
+    { id: 1, name: 'Javascript is awesome', comments: ["1", "2"], author: "1" },
     { id: 2, name: 'Javascript is awesome', comments: [], author: undefined }
   ]  
 });
@@ -230,7 +230,7 @@ addFixture('Read Posts with releations', {
   meta: {total: 2},
   payload: {
     post: [
-      { id: 1, name: 'Javascript is awesome', comments: [1,2], author: 1 },
+      { id: 1, name: 'Javascript is awesome', comments: ["1", "2"], author: "1" },
       { id: 2, name: 'Socket.io is awesome', comments: [] }
     ],
     comments: [
@@ -295,4 +295,37 @@ addFixture('Error message', {
   hash: { id: 1, error: "error" }
 }, {
   error: 'Server error'
+});
+
+addFixture('Update post without comments', {
+  type: 'post',
+  requestType: "UPDATE",
+  hash: {
+    post: {
+      id: "1",
+      name: "Javascript is awesome",
+      comments: [],
+      author: "1"
+    }
+  }
+}, {
+  post: [
+    { id: 1, name: 'Javascript is awesome' }
+  ]
+});
+
+addFixture('Update post without author', {
+  type:"post",
+  requestType:"UPDATE",
+  hash: {
+    post: {
+      id:"2",
+      name:"Javascript is awesome",
+      comments:[]
+    }
+  }
+}, {
+  post: [
+    { id: 2, name: 'Javascript is awesome' }
+  ]
 });
