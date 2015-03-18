@@ -440,8 +440,7 @@ test('Filterd Records should be added in store correctly', function() {
 test('Fetch one record by query should use passed params', function() {
   expect(2);
 
-  store.fetchOneByQuery('post', {
-    id: 1,
+  store.fetchOneByQuery('post', 1, {
     fields: ['author.name'],
     include: ['comments']
   }).then(async(function(post) {

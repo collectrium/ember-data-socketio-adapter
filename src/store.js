@@ -176,7 +176,7 @@ var Store = DS.Store.extend(Ember.Evented, {
 
     return promiseArray(_findQuery(adapter, this, type, query, array));
   },
-  fetchOneByQuery: function(type, query) {
+  fetchOneByQuery: function(type, id, query) {
     var model = this.modelFor(type);
     var promiseLabel = 'DS: Store#fetchOneByQuery ' + type + ' with query: ' + JSON.stringify(query);
 
@@ -185,18 +185,16 @@ var Store = DS.Store.extend(Ember.Evented, {
     }
 
     var requestData = {
-      query: query,
+      query: {id: id},
       limit: 1
     };
 
     if(Array.isArray(query.fields)) {
       requestData.fields = query.fields;
-      delete query.fields;
     }
 
     if(Array.isArray(query.include)) {
       requestData.include = query.include;
-      delete query.include;
     }
 
     // Next code save for compatibility with legacy variant
