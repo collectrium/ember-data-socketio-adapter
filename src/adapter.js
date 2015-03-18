@@ -5,6 +5,7 @@ var get = Ember.get, set = Ember.set,
 
 var SocketAdapter = DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
+  socketHandshakeQuery: '',
   bulkOperationsSupport: {
     createRecord: true,
     updateRecord: false,
@@ -328,7 +329,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
   openSocket: function() {
     this.getConnection({
-      resource: 'handshake'
+      resource: 'handshake',
+      query: this.socketHandshakeQuery
     });
   }.on('init')
 });
