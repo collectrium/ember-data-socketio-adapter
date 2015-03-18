@@ -335,9 +335,9 @@ addFixture('Update post without author', {
   requestType: "READ_LIST",
   hash: {
     query: {
-      id: 1,
-      limit: 1
+      id: 1
     },
+    limit: 1,
     fields:["author.name"],
     include:["comments"]
   }
