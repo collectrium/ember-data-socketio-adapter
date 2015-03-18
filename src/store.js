@@ -183,10 +183,10 @@ var Store = DS.Store.extend(Ember.Evented, {
     if(!(query instanceof Object)){
       query = {};
     }
-    query.limit = 1;
 
     var requestData = {
-      query: query
+      query: query,
+      limit: 1
     };
 
     if(Array.isArray(query.fields)) {
