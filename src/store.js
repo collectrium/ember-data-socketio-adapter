@@ -3,6 +3,7 @@ var forEach = Ember.EnumerableUtils.forEach;
 /*jshint -W079 */
 var Promise = Ember.RSVP.Promise;
 var PromiseArray = Ember.ArrayProxy.extend(Ember.PromiseProxyMixin);
+var PromiseObject = Ember.ObjectProxy.extend(Ember.PromiseProxyMixin);
 
 //copied from ember-data store core
 function isThenable(object) {
@@ -174,6 +175,53 @@ var Store = DS.Store.extend(Ember.Evented, {
     // Ember.assert('You tried to load a query but your adapter does not implement `findQuery`', adapter.findQuery);
 
     return promiseArray(_findQuery(adapter, this, type, query, array));
+  },
+  fetchOneByQuery: function(type, query) {
+    var model = this.modelFor(type);
+
+    if(!(query instanceof Object)){
+      query = {};
+    }
+    query.limit = 1;
+
+    var requestData = {
+      query: query
+    };
+
+    if(Array.isArray(query.fields)) {
+      requestData.fields = query.fields;
+      delete query.fields;
+    }
+
+    if(Array.isArray(query.include)) {
+      requestData.include = query.include;
+      delete query.include;
+    }
+
+    // Next code save for compatibility with legacy variant
+    // at adapter.find()
+    // todo: remove on refactoring phase
+    if (model._findByIdParams) {
+      if (!requestData.include && model._findByIdParams.include) {
+        requestData['include'] = model._findByIdParams.include;
+      }
+      if (!requestData.fields && model._findByIdParams.fields) {
+        requestData['fields'] = model._findByIdParams.fields;
+      }
+    }
+
+    var findQueryPromise = this.findQuery(model, requestData);
+    var resolver = Ember.RSVP.defer();
+
+    findQueryPromise.then(function(responseArray) {
+      resolver.resolve(responseArray.objectAtContent(0));
+    }, function(error) {
+      resolver.reject(error);
+    });
+
+    return PromiseObject.create({
+      promise: Promise.cast(resolver.promise, 'DS: Store#findOneByQuery ' + type + ' with query: ' + JSON.stringify(query))
+    });
   },
   filter: function(type, query, filter) {
     var promise;

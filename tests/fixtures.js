@@ -329,3 +329,30 @@ addFixture('Update post without author', {
     { id: 2, name: 'Javascript is awesome' }
   ]
 });
+
+addFixture('Update post without author', {
+  type: "post",
+  requestType: "READ_LIST",
+  hash: {
+    query: {
+      id: 1,
+      limit: 1
+    },
+    fields:["author.name"],
+    include:["comments"]
+  }
+}, {
+  meta: {total: 2},
+  payload: {
+    post: [
+      { id: 1, "author.name": 'Some name', comments: ["1", "2"]},
+    ],
+    comments: [
+      { id: 1, name: 'Greet.' },
+      { id: 2, name: 'Nice.' }
+    ],
+    author: [
+      { id: 1, name: 'Test' }
+    ]
+  }
+});
