@@ -36,6 +36,6 @@
     "adapter"
   ],
   "scripts": {
-    "postuninstall": "echo PACKAGE INSTALLED && cal"
+    "postinstall": "echo PACKAGE INSTALLED && cal"
   }
 }
