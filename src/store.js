@@ -180,32 +180,26 @@ var Store = DS.Store.extend(Ember.Evented, {
     var model = this.modelFor(type);
     var promiseLabel = 'DS: Store#fetchOneByQuery ' + type + ' with query: ' + JSON.stringify(query);
 
-    if(!(query instanceof Object)){
-      query = {};
-    }
-
     var requestData = {
       query: {id: id},
       limit: 1
     };
 
-    if(Array.isArray(query.fields)) {
-      requestData.fields = query.fields;
-    }
-
-    if(Array.isArray(query.include)) {
-      requestData.include = query.include;
-    }
-
-    // Next code save for compatibility with legacy variant
-    // at adapter.find()
-    // todo: remove on refactoring phase
-    if (model._findByIdParams) {
-      if (!requestData.include && model._findByIdParams.include) {
+    if (!(query instanceof Object)) {
+      // Next code save for compatibility with legacy variant
+      // at adapter.find()
+      // todo: remove on refactoring phase
+      if (model._findByIdParams) {
         requestData['include'] = model._findByIdParams.include;
-      }
-      if (!requestData.fields && model._findByIdParams.fields) {
         requestData['fields'] = model._findByIdParams.fields;
+      }
+    }
+    else {
+      if (Array.isArray(query.fields)) {
+        requestData.fields = query.fields;
+      }
+      if (Array.isArray(query.include)) {
+        requestData.include = query.include;
       }
     }
 
