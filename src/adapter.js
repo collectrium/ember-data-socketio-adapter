@@ -10,7 +10,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
     updateRecord: false,
     deleteRecord: true
   },
-
+  updateAsPatch: true,
   coalesceFindRequests: true,
   socketConnections: Ember.Object.create(),
   requestsPool: [],
@@ -246,10 +246,32 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   updateRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
-      data = {};
-    data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
+      data = {}, payload;
+    payload = serializer.serialize(record, { includeId: true });
+
+    if(this.get('updateAsPatch')) {
+      payload = this.filterUnchangedParams(payload, record);
+    }
+
+    data[type.typeKey.decamelize()] = payload;
 
     return this.send(type, 'UPDATE', data);
+  },
+
+  filterUnchangedParams: function(hash, record) {
+    hash = Ember.copy(hash);
+    var originalData = record.get('data');
+    var id = hash.id;
+
+    Ember.keys(originalData).forEach(function(key) {
+      if(hash[key] === originalData[key]) {
+        delete hash[key];
+      }
+    });
+
+    hash.id = id;
+
+    return hash;
   },
 
   /**
