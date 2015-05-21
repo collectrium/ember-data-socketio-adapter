@@ -44,8 +44,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
   getConnection: function(type, options) {
     /*jshint -W004 */
     var store = type.typeKey && type.store,
-      address = this.get('socketAddress') + '/',
-      requestsPool = this.get('requestsPool'),
+      address = get(this, 'socketAddress') + '/',
+      requestsPool = get(this, 'requestsPool'),
       type = type.typeKey,
       connections = get(this, 'socketConnections'),
       socketNS = type && get(connections, type);
@@ -123,7 +123,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   send: function(type, requestType, hash) {
     var connection = this.getConnection(type),
-      requestsPool = this.get('requestsPool'),
+      requestsPool = get(this, 'requestsPool'),
       requestId = this.generateRequestId(),
       deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
     if (!(hash instanceof Object)) {
@@ -249,7 +249,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
       data = {}, payload;
     payload = serializer.serialize(record, { includeId: true });
 
-    if(this.get('updateAsPatch')) {
+    if(get(this, 'updateAsPatch')) {
       payload = this.filterUnchangedParams(payload, record);
     }
 
@@ -260,7 +260,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
   filterUnchangedParams: function(hash, record) {
     hash = Ember.copy(hash);
-    var originalData = record.get('data');
+    var originalData = get(record, 'data');
     var id = hash.id;
 
     Ember.keys(originalData).forEach(function(key) {
