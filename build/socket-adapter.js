@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.38
-// b0dc23a (2015-05-21 11:18:36 +0300)
+// v0.1.39
+// 20f4f12 (2015-05-29 17:01:01 +0300)
 
 
 (function(global) {
@@ -422,7 +422,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.38';
+    var VERSION = '0.1.39';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -462,25 +462,6 @@ define("socket-adapter/serializer",
       },
       extractDeleteRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
-      },
-      serialize: function(snapshot, options) {
-        var hash = this._super(snapshot, options);
-        return this.pickQueriedFields(hash, snapshot);
-      },
-      pickQueriedFields: function(data, record) {
-        var propsKeys = Object.keys(record.get('data')),
-          retData = {};
-
-        // skip pick-logic for CREATE requests
-        if(!propsKeys.length) {
-          retData = data;
-        } else {
-          propsKeys.forEach(function(key) {
-            retData[key] = data[key];
-          });
-        }
-
-        return retData;
       }
     });
 
