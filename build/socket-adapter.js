@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.37
-// ff510df (2015-03-17 17:49:15 +0300)
+// v0.1.39
+// 9aa9ad8 (2015-05-29 18:23:21 +0300)
 
 
 (function(global) {
@@ -89,7 +89,7 @@ define("socket-adapter/adapter",
         updateRecord: false,
         deleteRecord: true
       },
-
+      updateAsPatch: true,
       coalesceFindRequests: true,
       socketConnections: Ember.Object.create(),
       requestsPool: [],
@@ -123,8 +123,8 @@ define("socket-adapter/adapter",
       getConnection: function(type, options) {
         /*jshint -W004 */
         var store = type.typeKey && type.store,
-          address = this.get('socketAddress') + '/',
-          requestsPool = this.get('requestsPool'),
+          address = get(this, 'socketAddress') + '/',
+          requestsPool = get(this, 'requestsPool'),
           type = type.typeKey,
           connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type);
@@ -202,7 +202,7 @@ define("socket-adapter/adapter",
        */
       send: function(type, requestType, hash) {
         var connection = this.getConnection(type),
-          requestsPool = this.get('requestsPool'),
+          requestsPool = get(this, 'requestsPool'),
           requestId = this.generateRequestId(),
           deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
         if (!(hash instanceof Object)) {
@@ -325,10 +325,32 @@ define("socket-adapter/adapter",
        */
       updateRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
-          data = {};
-        data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
+          data = {}, payload;
+        payload = serializer.serialize(record, { includeId: true });
+
+        if(get(this, 'updateAsPatch')) {
+          payload = this.filterUnchangedParams(payload, record);
+        }
+
+        data[type.typeKey.decamelize()] = payload;
 
         return this.send(type, 'UPDATE', data);
+      },
+
+      filterUnchangedParams: function(hash, record) {
+        hash = Ember.copy(hash);
+        var originalData = get(record, 'data');
+        var id = hash.id;
+
+        Ember.keys(originalData).forEach(function(key) {
+          if(hash[key] === originalData[key]) {
+            delete hash[key];
+          }
+        });
+
+        hash.id = id;
+
+        return hash;
       },
 
       /**
@@ -400,7 +422,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.37';
+    var VERSION = '0.1.39';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -443,10 +465,11 @@ define("socket-adapter/serializer",
       },
       serialize: function(snapshot, options) {
         var hash = this._super(snapshot, options);
-        return this.pickQueriedFields(hash, snapshot);
+        return this.filterFields(hash, snapshot);
       },
-      pickQueriedFields: function(data, record) {
-        var propsKeys = Object.keys(record.get('data')),
+      filterFields: function(data, record) {
+        var dataKeys = Object.keys(record.get('data')), // sended from server properties
+          propsKeys = Object.keys(data), // properties from object
           retData = {};
 
         // skip pick-logic for CREATE requests
@@ -454,7 +477,11 @@ define("socket-adapter/serializer",
           retData = data;
         } else {
           propsKeys.forEach(function(key) {
-            retData[key] = data[key];
+            // We won't pass values if they didn't came from server ( not in dataKeys
+            // but allow to set new not-default values ( if they were added on client ) (null is default value)
+            if(dataKeys.contains(key) || data[key] !== null) {
+              retData[key] = data[key];
+            }
           });
         }
 

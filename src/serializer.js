@@ -19,10 +19,11 @@ var Serializer = DS.RESTSerializer.extend({
   },
   serialize: function(snapshot, options) {
     var hash = this._super(snapshot, options);
-    return this.pickQueriedFields(hash, snapshot);
+    return this.filterFields(hash, snapshot);
   },
-  pickQueriedFields: function(data, record) {
-    var propsKeys = Object.keys(record.get('data')),
+  filterFields: function(data, record) {
+    var dataKeys = Object.keys(record.get('data')), // sended from server properties
+      propsKeys = Object.keys(data), // properties from object
       retData = {};
 
     // skip pick-logic for CREATE requests
@@ -30,7 +31,11 @@ var Serializer = DS.RESTSerializer.extend({
       retData = data;
     } else {
       propsKeys.forEach(function(key) {
-        retData[key] = data[key];
+        // We won't pass values if they didn't came from server ( not in dataKeys
+        // but allow to set new not-default values ( if they were added on client ) (null is default value)
+        if(dataKeys.contains(key) || data[key] !== null) {
+          retData[key] = data[key];
+        }
       });
     }
 
