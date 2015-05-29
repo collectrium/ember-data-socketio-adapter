@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.39
-// 20f4f12 (2015-05-29 17:01:01 +0300)
+// 9aa9ad8 (2015-05-29 18:23:21 +0300)
 
 
 (function(global) {
@@ -462,6 +462,30 @@ define("socket-adapter/serializer",
       },
       extractDeleteRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
+      },
+      serialize: function(snapshot, options) {
+        var hash = this._super(snapshot, options);
+        return this.filterFields(hash, snapshot);
+      },
+      filterFields: function(data, record) {
+        var dataKeys = Object.keys(record.get('data')), // sended from server properties
+          propsKeys = Object.keys(data), // properties from object
+          retData = {};
+
+        // skip pick-logic for CREATE requests
+        if(!propsKeys.length) {
+          retData = data;
+        } else {
+          propsKeys.forEach(function(key) {
+            // We won't pass values if they didn't came from server ( not in dataKeys
+            // but allow to set new not-default values ( if they were added on client ) (null is default value)
+            if(dataKeys.contains(key) || data[key] !== null) {
+              retData[key] = data[key];
+            }
+          });
+        }
+
+        return retData;
       }
     });
 
