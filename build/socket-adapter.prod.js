@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.40
-// b484026 (2015-06-01 19:54:24 +0300)
+// 0eef038 (2015-06-01 20:00:13 +0300)
 
 
 (function(global) {
@@ -341,6 +341,7 @@ define("socket-adapter/adapter",
         hash = Ember.copy(hash);
         var originalData = get(record, 'data');
         var id = hash.id;
+        var isEmpty = Ember.isEmpty;
 
         Ember.keys(originalData).forEach(function(key) {
           if(hash[key] === originalData[key]) {
