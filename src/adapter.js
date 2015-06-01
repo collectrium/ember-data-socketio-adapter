@@ -259,12 +259,11 @@ var SocketAdapter = DS.RESTAdapter.extend({
   },
 
   filterUnchangedParams: function(hash, record) {
-    hash = Ember.copy(hash);
     var originalData = get(record, 'data');
     var id = hash.id;
     var isEmpty = Ember.isEmpty;
 
-    Ember.keys(originalData).forEach(function(key) {
+    Ember.keys(hash).forEach(function(key) {
       if(hash[key] === originalData[key]) {
         // we won't send data that didn't change
         delete hash[key];
