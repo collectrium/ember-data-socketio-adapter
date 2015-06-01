@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.39
-// 9aa9ad8 (2015-05-29 18:23:21 +0300)
+// 3a676e6 (2015-06-01 17:57:20 +0300)
 
 
 (function(global) {
@@ -344,6 +344,10 @@ define("socket-adapter/adapter",
 
         Ember.keys(originalData).forEach(function(key) {
           if(hash[key] === originalData[key]) {
+            // we won't send data that didn't change
+            delete hash[key];
+          } else if ((typeof hash[key] === 'object') && isEmpty(hash[key]) && isEmpty(originalData[key])) {
+            // and we won't send comples data ( like objects/arrays ) it it's empty and wasn't load
             delete hash[key];
           }
         });

@@ -265,6 +265,10 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
     Ember.keys(originalData).forEach(function(key) {
       if(hash[key] === originalData[key]) {
+        // we won't send data that didn't change
+        delete hash[key];
+      } else if ((typeof hash[key] === 'object') && isEmpty(hash[key]) && isEmpty(originalData[key])) {
+        // and we won't send comples data ( like objects/arrays ) it it's empty and wasn't load
         delete hash[key];
       }
     });
