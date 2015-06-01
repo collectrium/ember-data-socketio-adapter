@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.39
-// 3a676e6 (2015-06-01 17:57:20 +0300)
+// v0.1.40
+// b484026 (2015-06-01 19:54:24 +0300)
 
 
 (function(global) {
@@ -426,7 +426,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.39';
+    var VERSION = '0.1.40';
     var SA;
     if ('undefined' === typeof SA) {
 
