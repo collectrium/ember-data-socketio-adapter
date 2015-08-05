@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.37
-// ff510df (2015-03-17 17:49:15 +0300)
+// v0.1.38
+// 390f2e5 (2015-03-18 15:37:37 +0300)
 
 
 (function(global) {
@@ -84,6 +84,7 @@ define("socket-adapter/adapter",
 
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
+      socketHandshakeQuery: '',
       bulkOperationsSupport: {
         createRecord: true,
         updateRecord: false,
@@ -385,7 +386,8 @@ define("socket-adapter/adapter",
 
       openSocket: function() {
         this.getConnection({
-          resource: 'handshake'
+          resource: 'handshake',
+          query: this.socketHandshakeQuery
         });
       }.on('init')
     });
@@ -400,7 +402,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.37';
+    var VERSION = '0.1.38';
     var SA;
     if ('undefined' === typeof SA) {
 
