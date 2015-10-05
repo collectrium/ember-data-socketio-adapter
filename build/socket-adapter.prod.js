@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.41
-// 4b7f15e (2015-10-05 21:54:29 +0300)
+// 499aec5 (2015-10-05 21:55:27 +0300)
 
 
 (function(global) {
@@ -466,7 +466,10 @@ define("socket-adapter/serializer",
         return this.extractArray(store, type, payload);
       },
       serialize: function(record, options) {
-        var snapshot = record._createSnapshot();
+        // for some cases we have snapshot / for some record
+        // todo: update methods which used this one for new signature
+        // see ember-data changelog
+        var snapshot = !!record._createSnapshot? record._createSnapshot(): record;
         var hash = this._super(snapshot, options);
         return this.filterFields(hash, snapshot);
       },
