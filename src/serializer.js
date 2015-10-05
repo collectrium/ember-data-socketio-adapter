@@ -1,3 +1,5 @@
+var get = Ember.get;
+
 var Serializer = DS.RESTSerializer.extend({
   extractFindQuery: function(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
@@ -17,18 +19,19 @@ var Serializer = DS.RESTSerializer.extend({
   extractDeleteRecords: function(store, type, payload) {
     return this.extractArray(store, type, payload);
   },
-  serialize: function(snapshot, options) {
+  serialize: function(record, options) {
+    var snapshot = record._createSnapshot();
     var hash = this._super(snapshot, options);
     return this.filterFields(hash, snapshot);
   },
   filterFields: function(data, snapshot) {
-    var dataKeys = Object.keys(snapshot.get('data')); // sended from server properties
+    var dataKeys = Object.keys(get(snapshot, 'data')); // sended from server properties
     var propsKeys = Object.keys(data); // properties from object
     var retData = {};
     var relationship;
 
     // skip pick-logic for CREATE requests
-    if(!snapshot.record) {
+    if(get(snapshot, 'isNew')) {
       retData = data;
     } else {
       propsKeys.forEach(function(key) {
