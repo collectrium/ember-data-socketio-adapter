@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.39
-// 9aa9ad8 (2015-05-29 18:23:21 +0300)
+// v0.1.41
+// 4b7f15e (2015-10-05 21:54:29 +0300)
 
 
 (function(global) {
@@ -422,7 +422,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.39';
+    var VERSION = '0.1.41';
     var SA;
     if ('undefined' === typeof SA) {
 
@@ -444,6 +444,8 @@ define("socket-adapter/serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
+    var get = Ember.get;
+
     var Serializer = DS.RESTSerializer.extend({
       extractFindQuery: function(store, type, payload) {
         return this.extractArray(store, type, payload.payload);
@@ -463,28 +465,30 @@ define("socket-adapter/serializer",
       extractDeleteRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
       },
-      serialize: function(snapshot, options) {
+      serialize: function(record, options) {
+        var snapshot = record._createSnapshot();
         var hash = this._super(snapshot, options);
         return this.filterFields(hash, snapshot);
       },
-      filterFields: function(data, record) {
-        var dataKeys = Object.keys(record.get('data')), // sended from server properties
-          propsKeys = Object.keys(data), // properties from object
-          retData = {};
+      filterFields: function(data, snapshot) {
+        var dataKeys = Object.keys(get(snapshot, 'data')); // sended from server properties
+        var propsKeys = Object.keys(data); // properties from object
+        var retData = {};
+        var relationship;
 
         // skip pick-logic for CREATE requests
-        if(!propsKeys.length) {
+        if(get(snapshot, 'isNew')) {
           retData = data;
         } else {
           propsKeys.forEach(function(key) {
-            // We won't pass values if they didn't came from server ( not in dataKeys
+            relationship = snapshot.record.relationshipFor(key);
+            // We won't pass values if they didn't came from server ( not in dataKeys )
             // but allow to set new not-default values ( if they were added on client ) (null is default value)
-            if(dataKeys.contains(key) || data[key] !== null) {
+            if(dataKeys.contains(key) || (!(relationship && relationship.kind === 'hasMany') && data[key] !== null)) {
               retData[key] = data[key];
             }
           });
         }
-
         return retData;
       }
     });
