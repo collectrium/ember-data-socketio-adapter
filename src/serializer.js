@@ -21,24 +21,25 @@ var Serializer = DS.RESTSerializer.extend({
     var hash = this._super(snapshot, options);
     return this.filterFields(hash, snapshot);
   },
-  filterFields: function(data, record) {
-    var dataKeys = Object.keys(record.get('data')), // sended from server properties
-      propsKeys = Object.keys(data), // properties from object
-      retData = {};
+  filterFields: function(data, snapshot) {
+    var dataKeys = Object.keys(snapshot.get('data')); // sended from server properties
+    var propsKeys = Object.keys(data); // properties from object
+    var retData = {};
+    var relationship;
 
     // skip pick-logic for CREATE requests
-    if(!propsKeys.length) {
+    if(!snapshot.record) {
       retData = data;
     } else {
       propsKeys.forEach(function(key) {
-        // We won't pass values if they didn't came from server ( not in dataKeys
+        relationship = snapshot.record.relationshipFor(key);
+        // We won't pass values if they didn't came from server ( not in dataKeys )
         // but allow to set new not-default values ( if they were added on client ) (null is default value)
-        if(dataKeys.contains(key) || data[key] !== null) {
+        if(dataKeys.contains(key) || (!(relationship && relationship.kind === 'hasMany') && data[key] !== null)) {
           retData[key] = data[key];
         }
       });
     }
-
     return retData;
   }
 });
