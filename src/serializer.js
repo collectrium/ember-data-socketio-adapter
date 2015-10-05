@@ -20,7 +20,10 @@ var Serializer = DS.RESTSerializer.extend({
     return this.extractArray(store, type, payload);
   },
   serialize: function(record, options) {
-    var snapshot = record._createSnapshot();
+    // for some cases we have snapshot / for some record
+    // todo: update methods which used this one for new signature
+    // see ember-data changelog
+    var snapshot = !!record._createSnapshot? record._createSnapshot(): record;
     var hash = this._super(snapshot, options);
     return this.filterFields(hash, snapshot);
   },
