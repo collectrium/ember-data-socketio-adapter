@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.41
-// 499aec5 (2015-10-05 21:55:27 +0300)
+// 88f8026 (2015-08-05 10:59:05 +0300)
 
 
 (function(global) {
@@ -84,12 +84,13 @@ define("socket-adapter/adapter",
 
     var SocketAdapter = DS.RESTAdapter.extend({
       socketAddress: 'http://api.collectrium.websocket:5000',
+      socketHandshakeQuery: '',
       bulkOperationsSupport: {
         createRecord: true,
         updateRecord: false,
         deleteRecord: true
       },
-      updateAsPatch: true,
+
       coalesceFindRequests: true,
       socketConnections: Ember.Object.create(),
       requestsPool: [],
@@ -123,8 +124,8 @@ define("socket-adapter/adapter",
       getConnection: function(type, options) {
         /*jshint -W004 */
         var store = type.typeKey && type.store,
-          address = get(this, 'socketAddress') + '/',
-          requestsPool = get(this, 'requestsPool'),
+          address = this.get('socketAddress') + '/',
+          requestsPool = this.get('requestsPool'),
           type = type.typeKey,
           connections = get(this, 'socketConnections'),
           socketNS = type && get(connections, type);
@@ -202,7 +203,7 @@ define("socket-adapter/adapter",
        */
       send: function(type, requestType, hash) {
         var connection = this.getConnection(type),
-          requestsPool = get(this, 'requestsPool'),
+          requestsPool = this.get('requestsPool'),
           requestId = this.generateRequestId(),
           deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
         if (!(hash instanceof Object)) {
@@ -325,32 +326,10 @@ define("socket-adapter/adapter",
        */
       updateRecord: function(store, type, record) {
         var serializer = store.serializerFor(type.typeKey),
-          data = {}, payload;
-        payload = serializer.serialize(record, { includeId: true });
-
-        if(get(this, 'updateAsPatch')) {
-          payload = this.filterUnchangedParams(payload, record);
-        }
-
-        data[type.typeKey.decamelize()] = payload;
+          data = {};
+        data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
 
         return this.send(type, 'UPDATE', data);
-      },
-
-      filterUnchangedParams: function(hash, record) {
-        hash = Ember.copy(hash);
-        var originalData = get(record, 'data');
-        var id = hash.id;
-
-        Ember.keys(originalData).forEach(function(key) {
-          if(hash[key] === originalData[key]) {
-            delete hash[key];
-          }
-        });
-
-        hash.id = id;
-
-        return hash;
       },
 
       /**
@@ -407,7 +386,8 @@ define("socket-adapter/adapter",
 
       openSocket: function() {
         this.getConnection({
-          resource: 'handshake'
+          resource: 'handshake',
+          query: this.socketHandshakeQuery
         });
       }.on('init')
     });
@@ -444,8 +424,6 @@ define("socket-adapter/serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var get = Ember.get;
-
     var Serializer = DS.RESTSerializer.extend({
       extractFindQuery: function(store, type, payload) {
         return this.extractArray(store, type, payload.payload);
@@ -465,33 +443,23 @@ define("socket-adapter/serializer",
       extractDeleteRecords: function(store, type, payload) {
         return this.extractArray(store, type, payload);
       },
-      serialize: function(record, options) {
-        // for some cases we have snapshot / for some record
-        // todo: update methods which used this one for new signature
-        // see ember-data changelog
-        var snapshot = !!record._createSnapshot? record._createSnapshot(): record;
+      serialize: function(snapshot, options) {
         var hash = this._super(snapshot, options);
-        return this.filterFields(hash, snapshot);
+        return this.pickQueriedFields(hash, snapshot);
       },
-      filterFields: function(data, snapshot) {
-        var dataKeys = Object.keys(get(snapshot, 'data')); // sended from server properties
-        var propsKeys = Object.keys(data); // properties from object
-        var retData = {};
-        var relationship;
+      pickQueriedFields: function(data, record) {
+        var propsKeys = Object.keys(record.get('data')),
+          retData = {};
 
         // skip pick-logic for CREATE requests
-        if(get(snapshot, 'isNew')) {
+        if(!propsKeys.length) {
           retData = data;
         } else {
           propsKeys.forEach(function(key) {
-            relationship = snapshot.record.relationshipFor(key);
-            // We won't pass values if they didn't came from server ( not in dataKeys )
-            // but allow to set new not-default values ( if they were added on client ) (null is default value)
-            if(dataKeys.contains(key) || (!(relationship && relationship.kind === 'hasMany') && data[key] !== null)) {
-              retData[key] = data[key];
-            }
+            retData[key] = data[key];
           });
         }
+
         return retData;
       }
     });
