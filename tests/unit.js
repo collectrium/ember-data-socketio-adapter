@@ -175,7 +175,7 @@ test('Update Post', function() {
           type: 'post',
           requestType: 'UPDATE',
           hash: { post: {
-            id: '1', name: 'Javascript is awesome', comments: [], author: '1'
+            id: '1', name: 'Javascript is awesome', comments: ['1', '2'], author: '1'
           }
           }
         },

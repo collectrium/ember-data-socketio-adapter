@@ -6,6 +6,7 @@ module.exports = function(karma) {
       '../vendor/jquery/dist/jquery.js',
       '../vendor/handlebars/handlebars.js',
       '../vendor/ember/ember.js',
+      '../vendor/ember/ember-template-compiler.js',
       '../vendor/ember-data/ember-data.js',
       '../dist/socket-adapter.js',
       "fixtures.js",

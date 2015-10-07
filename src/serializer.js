@@ -1,3 +1,5 @@
+var get = Ember.get;
+
 var Serializer = DS.RESTSerializer.extend({
   extractFindQuery: function(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
@@ -17,23 +19,33 @@ var Serializer = DS.RESTSerializer.extend({
   extractDeleteRecords: function(store, type, payload) {
     return this.extractArray(store, type, payload);
   },
-  serialize: function(snapshot, options) {
+  serialize: function(record, options) {
+    // for some cases we have snapshot / for some record
+    // todo: update methods which used this one for new signature
+    // see ember-data changelog
+    var snapshot = !!record._createSnapshot? record._createSnapshot(): record;
     var hash = this._super(snapshot, options);
-    return this.pickQueriedFields(hash, snapshot);
+    return this.filterFields(hash, snapshot);
   },
-  pickQueriedFields: function(data, record) {
-    var propsKeys = Object.keys(record.get('data')),
-      retData = {};
+  filterFields: function(data, snapshot) {
+    var dataKeys = Object.keys(get(snapshot, 'data')); // sended from server properties
+    var propsKeys = Object.keys(data); // properties from object
+    var retData = {};
+    var relationship;
 
     // skip pick-logic for CREATE requests
-    if(!propsKeys.length) {
+    if(get(snapshot, 'isNew')) {
       retData = data;
     } else {
       propsKeys.forEach(function(key) {
-        retData[key] = data[key];
+        relationship = snapshot.record.relationshipFor(key);
+        // We won't pass values if they didn't came from server ( not in dataKeys )
+        // but allow to set new not-default values ( if they were added on client ) (null is default value)
+        if(dataKeys.contains(key) || (!(relationship && relationship.kind === 'hasMany') && data[key] !== null)) {
+          retData[key] = data[key];
+        }
       });
     }
-
     return retData;
   }
 });

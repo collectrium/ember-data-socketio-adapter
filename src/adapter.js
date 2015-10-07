@@ -11,7 +11,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
     updateRecord: false,
     deleteRecord: true
   },
-
+  updateAsPatch: true,
   coalesceFindRequests: true,
   socketConnections: Ember.Object.create(),
   requestsPool: [],
@@ -45,8 +45,8 @@ var SocketAdapter = DS.RESTAdapter.extend({
   getConnection: function(type, options) {
     /*jshint -W004 */
     var store = type.typeKey && type.store,
-      address = this.get('socketAddress') + '/',
-      requestsPool = this.get('requestsPool'),
+      address = get(this, 'socketAddress') + '/',
+      requestsPool = get(this, 'requestsPool'),
       type = type.typeKey,
       connections = get(this, 'socketConnections'),
       socketNS = type && get(connections, type);
@@ -124,7 +124,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   send: function(type, requestType, hash) {
     var connection = this.getConnection(type),
-      requestsPool = this.get('requestsPool'),
+      requestsPool = get(this, 'requestsPool'),
       requestId = this.generateRequestId(),
       deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
     if (!(hash instanceof Object)) {
@@ -247,10 +247,32 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   updateRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.typeKey),
-      data = {};
-    data[type.typeKey.decamelize()] = serializer.serialize(record, { includeId: true });
+      data = {}, payload;
+    payload = serializer.serialize(record, { includeId: true });
+
+    if(get(this, 'updateAsPatch')) {
+      payload = this.filterUnchangedParams(payload, record);
+    }
+
+    data[type.typeKey.decamelize()] = payload;
 
     return this.send(type, 'UPDATE', data);
+  },
+
+  filterUnchangedParams: function(hash, record) {
+    hash = Ember.copy(hash);
+    var originalData = get(record, 'data');
+    var id = hash.id;
+
+    Ember.keys(originalData).forEach(function(key) {
+      if(hash[key] === originalData[key]) {
+        delete hash[key];
+      }
+    });
+
+    hash.id = id;
+
+    return hash;
   },
 
   /**
