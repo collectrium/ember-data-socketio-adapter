@@ -327,9 +327,13 @@ var SocketAdapter = DS.RESTAdapter.extend({
 
 
   openSocket: function() {
-    this.getConnection({
+    var config = {
       resource: 'handshake'
-    });
+    };
+    if (this.version) {
+      config.query = 'version=' + this.version;
+    }
+    this.getConnection(config);
   }.on('init')
 });
 
