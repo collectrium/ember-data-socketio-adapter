@@ -47,13 +47,15 @@ function _commit(adapter, store, operation, record) {
   return promise.then(function(adapterPayload) {
     var payload;
 
-    if (adapterPayload) {
-      payload = serializer.extract(store, type, adapterPayload, get(record, 'id'), operation);
-    } else {
-      payload = adapterPayload;
-    }
+    store._adapterRun(function(){
+      if (adapterPayload) {
+        payload = serializer.extract(store, type, adapterPayload, get(record, 'id'), operation);
+      } else {
+        payload = adapterPayload;
+      }
 
-    store.didSaveRecord(record, payload);
+      store.didSaveRecord(record, payload);
+    });
     return record;
   }, function(reason) {
     if (reason instanceof DS.InvalidError) {
