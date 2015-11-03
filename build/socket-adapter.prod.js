@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.44
-// 27b90f3 (2015-10-30 01:39:40 +0000)
+// 64fcd49 (2015-11-03 20:57:56 +0300)
 
 
 (function(global) {
@@ -122,12 +122,14 @@ define("socket-adapter/adapter",
        */
       getConnection: function(type, options) {
         /*jshint -W004 */
-        var store = type.typeKey && type.store,
-          address = get(this, 'socketAddress') + '/',
-          requestsPool = get(this, 'requestsPool'),
-          type = type.typeKey,
-          connections = get(this, 'socketConnections'),
-          socketNS = type && get(connections, type);
+        var store = type.typeKey && type.store;
+        var address = get(this, 'socketAddress') + '/';
+        var requestsPool = get(this, 'requestsPool');
+        type = type.typeKey;
+        var connections = get(this, 'socketConnections');
+        var socketNS = type && get(connections, type);
+        var onConnectFailed = this.onConnectFailed;
+        var adapter = this;
 
         if (arguments.length === 1) {
           options = {};
@@ -185,9 +187,14 @@ define("socket-adapter/adapter",
                 }
               }
             });
-          }
-          if (type) {
             set(connections, type, socketNS);
+          }
+          else {
+            socketNS.on('connect_failed', function(response) {
+              if (onConnectFailed) {
+                onConnectFailed.call(adapter, response);
+              }
+            });
           }
         }
         return socketNS;
@@ -208,16 +215,6 @@ define("socket-adapter/adapter",
         if (!(hash instanceof Object)) {
           hash = {};
         }
-        /**
-         * Handshake was aborted
-         */
-        connection.on('error', function () {
-            Ember.run(null, deffered.reject, {
-              code:'auth-failed',
-              name: 'Authentication failed',
-              message: 'Invalid session token'
-            });
-        });
         deffered.requestType = requestType;
         hash.request_id = requestId;
         requestsPool[requestId] = deffered;
