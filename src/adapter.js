@@ -43,12 +43,14 @@ var SocketAdapter = DS.RESTAdapter.extend({
    */
   getConnection: function(type, options) {
     /*jshint -W004 */
-    var store = type.typeKey && type.store,
-      address = get(this, 'socketAddress') + '/',
-      requestsPool = get(this, 'requestsPool'),
-      type = type.typeKey,
-      connections = get(this, 'socketConnections'),
-      socketNS = type && get(connections, type);
+    var store = type.typeKey && type.store;
+    var address = get(this, 'socketAddress') + '/';
+    var requestsPool = get(this, 'requestsPool');
+    type = type.typeKey;
+    var connections = get(this, 'socketConnections');
+    var socketNS = type && get(connections, type);
+    var onConnectFailed = this.onConnectFailed;
+    var adapter = this;
 
     if (arguments.length === 1) {
       options = {};
@@ -106,9 +108,14 @@ var SocketAdapter = DS.RESTAdapter.extend({
             }
           }
         });
-      }
-      if (type) {
         set(connections, type, socketNS);
+      }
+      else {
+        socketNS.on('connect_failed', function(response) {
+          if (onConnectFailed) {
+            onConnectFailed.call(adapter, response);
+          }
+        });
       }
     }
     return socketNS;
@@ -129,16 +136,6 @@ var SocketAdapter = DS.RESTAdapter.extend({
     if (!(hash instanceof Object)) {
       hash = {};
     }
-    /**
-     * Handshake was aborted
-     */
-    connection.on('error', function () {
-        Ember.run(null, deffered.reject, {
-          code:'auth-failed',
-          name: 'Authentication failed',
-          message: 'Invalid session token'
-        });
-    });
     deffered.requestType = requestType;
     hash.request_id = requestId;
     requestsPool[requestId] = deffered;
