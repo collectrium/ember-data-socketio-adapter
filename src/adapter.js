@@ -50,6 +50,7 @@ var SocketAdapter = DS.RESTAdapter.extend({
     var connections = get(this, 'socketConnections');
     var socketNS = type && get(connections, type);
     var onConnectFailed = this.onConnectFailed;
+    var onError = this.onError;
     var adapter = this;
 
     if (arguments.length === 1) {
@@ -114,6 +115,11 @@ var SocketAdapter = DS.RESTAdapter.extend({
         socketNS.on('connect_failed', function(response) {
           if (onConnectFailed) {
             onConnectFailed.call(adapter, response);
+          }
+        });
+        socketNS.on('error', function(response) {
+          if (onError) {
+            onError.call(adapter, response);
           }
         });
       }
