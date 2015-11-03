@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.44
-// 64fcd49 (2015-11-03 20:57:56 +0300)
+// v0.1.45
+// 2f7f2c5 (2015-11-04 00:22:01 +0300)
 
 
 (function(global) {
@@ -129,7 +129,6 @@ define("socket-adapter/adapter",
         var connections = get(this, 'socketConnections');
         var socketNS = type && get(connections, type);
         var onConnectFailed = this.onConnectFailed;
-        var onError = this.onError;
         var adapter = this;
 
         if (arguments.length === 1) {
@@ -194,11 +193,6 @@ define("socket-adapter/adapter",
             socketNS.on('connect_failed', function(response) {
               if (onConnectFailed) {
                 onConnectFailed.call(adapter, response);
-              }
-            });
-            socketNS.on('error', function(response) {
-              if (onError) {
-                onError.call(adapter, response);
               }
             });
           }
@@ -429,7 +423,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.44';
+    var VERSION = '0.1.45';
     var SA;
     if ('undefined' === typeof SA) {
 
