@@ -4,7 +4,7 @@
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
 // v0.1.45
-// 2f7f2c5 (2015-11-04 00:22:01 +0300)
+// 6bac7ca (2015-11-04 00:30:56 +0300)
 
 
 (function(global) {
@@ -129,6 +129,7 @@ define("socket-adapter/adapter",
         var connections = get(this, 'socketConnections');
         var socketNS = type && get(connections, type);
         var onConnectFailed = this.onConnectFailed;
+        var onError = this.onError;
         var adapter = this;
 
         if (arguments.length === 1) {
@@ -193,6 +194,11 @@ define("socket-adapter/adapter",
             socketNS.on('connect_failed', function(response) {
               if (onConnectFailed) {
                 onConnectFailed.call(adapter, response);
+              }
+            });
+            socketNS.on('error', function(response) {
+              if (onError) {
+                onError.call(adapter, response);
               }
             });
           }
