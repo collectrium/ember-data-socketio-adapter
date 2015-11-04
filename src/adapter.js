@@ -285,13 +285,19 @@ var SocketAdapter = DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   updateRecords: function(store, type, records) {
-    var serializer = store.serializerFor(type.typeKey),
-      data = {};
-    data[type.typeKey.decamelize()] = [];
+    var serializer = store.serializerFor(type.typeKey);
+    var updateAsPatch = get(this, 'updateAsPatch');
+    var data = {};
+    var payloads = [];
+    data[type.typeKey.decamelize()] = payloads;
 
     forEach(records, function(record) {
-      data[type.typeKey.decamelize()].push(serializer.serialize(record, { includeId: true }));
-    });
+      var payload = serializer.serialize(record, { includeId: true });
+      if(updateAsPatch) {
+        payload = this.filterUnchangedParams(payload, record);
+      }
+      payloads.push(payload);
+    }, this);
 
     return this.send(type, 'UPDATE_LIST', data);
   },

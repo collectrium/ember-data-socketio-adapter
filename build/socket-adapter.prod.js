@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.45
-// 6bac7ca (2015-11-04 00:30:56 +0300)
+// v0.1.46
+// 77a74eb (2015-11-04 18:13:11 +0300)
 
 
 (function(global) {
@@ -364,13 +364,19 @@ define("socket-adapter/adapter",
        * @returns {Ember.RSVP.Promise}
        */
       updateRecords: function(store, type, records) {
-        var serializer = store.serializerFor(type.typeKey),
-          data = {};
-        data[type.typeKey.decamelize()] = [];
+        var serializer = store.serializerFor(type.typeKey);
+        var updateAsPatch = get(this, 'updateAsPatch');
+        var data = {};
+        var payloads = [];
+        data[type.typeKey.decamelize()] = payloads;
 
         forEach(records, function(record) {
-          data[type.typeKey.decamelize()].push(serializer.serialize(record, { includeId: true }));
-        });
+          var payload = serializer.serialize(record, { includeId: true });
+          if(updateAsPatch) {
+            payload = this.filterUnchangedParams(payload, record);
+          }
+          payloads.push(payload);
+        }, this);
 
         return this.send(type, 'UPDATE_LIST', data);
       },
@@ -429,7 +435,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.45';
+    var VERSION = '0.1.46';
     var SA;
     if ('undefined' === typeof SA) {
 
