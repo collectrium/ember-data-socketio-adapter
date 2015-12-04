@@ -1,0 +1,19 @@
+{
+  "preset": "ember-suave",
+
+  "requireCommentsToIncludeAccess": false,
+  "requireCamelCaseOrUpperCaseIdentifiers": false,
+  "disallowMultiLineTernary": true,
+  "disallowNestedTernaries": true,
+
+  "disallowMultipleVarDecl": false,
+  "disallowVar": false,
+  "requireObjectDestructuring": false,
+  "requireArrayDestructuring": false,
+  "requireTemplateStringsForConcatenation": false,
+  "requireEnhancedObjectLiterals": false,
+  "requireLineBreakAfterVariableAssignment": false,
+  "requireDotNotation": false,
+  "disallowTrailingComma": false,
+  "validateQuoteMarks": false
+}
