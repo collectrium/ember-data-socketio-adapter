@@ -35,7 +35,7 @@ function serializerForAdapter(adapter, type) {
   const container = adapter.container;
 
   if (container && serializer === undefined) {
-    serializer = serializerFor(container, type.typeKey, defaultSerializer);
+    serializer = serializerFor(container, type.modelName, defaultSerializer);
   }
 
   if (serializer === null || serializer === undefined) {

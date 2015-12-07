@@ -47,7 +47,6 @@ export default DS.RESTAdapter.extend({
       S4() + S4() + S4()
       );
   },
-
   /**
    *
    * @param type
@@ -58,7 +57,7 @@ export default DS.RESTAdapter.extend({
     /*jshint -W004 */
     var address = get(this, 'socketAddress') + '/';
     var requestsPool = get(this, 'requestsPool');
-    type = type.typeKey;
+    type = type.modelName;
     var connections = get(this, 'socketConnections');
     var socketNS = type && get(connections, type);
     var onConnectFailed = this.onConnectFailed;
@@ -79,7 +78,7 @@ export default DS.RESTAdapter.extend({
       }
     } else {
       if (type) {
-        address = `${address}${decamelize(type)}/`;
+        address = `${address}${this.pathForType(type)}/`;
       }
       socketNS = io.connect(address, options);
       if (type) {
@@ -152,7 +151,7 @@ export default DS.RESTAdapter.extend({
     var connection = this.getConnection(type),
       requestsPool = get(this, 'requestsPool'),
       requestId = this.generateRequestId(),
-      deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.typeKey);
+      deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.modelName);
     if (!(hash instanceof Object)) {
       hash = {};
     }
@@ -229,9 +228,9 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   createRecord: function(store, type, record) {
-    var serializer = store.serializerFor(type.typeKey),
+    var serializer = store.serializerFor(type.modelName),
       data = {};
-    data[decamelize(type.typeKey)] = serializer.serialize(record);
+    data[decamelize(type.modelName)] = serializer.serialize(record);
 
     return this.send(type, 'CREATE', data);
   },
@@ -244,12 +243,12 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   createRecords: function(store, type, records) {
-    var serializer = store.serializerFor(type.typeKey),
+    var serializer = store.serializerFor(type.modelName),
       data = {};
-    data[decamelize(type.typeKey)] = [];
+    data[decamelize(type.modelName)] = [];
 
     forEach(records, function(record) {
-      data[decamelize(type.typeKey)].push(serializer.serialize(record));
+      data[decamelize(type.modelName)].push(serializer.serialize(record));
     });
     return this.send(type, 'CREATE_LIST', data);
   },
@@ -262,7 +261,7 @@ export default DS.RESTAdapter.extend({
    * @returns {*|ajax|v.support.ajax|jQuery.ajax|Promise|E.ajax}
    */
   updateRecord: function(store, type, record) {
-    var serializer = store.serializerFor(type.typeKey),
+    var serializer = store.serializerFor(type.modelName),
       data = {}, payload;
     payload = serializer.serialize(record, { includeId: true });
 
@@ -270,7 +269,7 @@ export default DS.RESTAdapter.extend({
       payload = this.filterUnchangedParams(payload, record);
     }
 
-    data[decamelize(type.typeKey)] = payload;
+    data[decamelize(type.modelName)] = payload;
 
     return this.send(type, 'UPDATE', data);
   },
@@ -299,11 +298,11 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   updateRecords: function(store, type, records) {
-    var serializer = store.serializerFor(type.typeKey);
+    var serializer = store.serializerFor(type.modelName);
     var updateAsPatch = get(this, 'updateAsPatch');
     var data = {};
     var payloads = [];
-    data[decamelize(type.typeKey)] = payloads;
+    data[decamelize(type.modelName)] = payloads;
 
     forEach(records, function(record) {
       var payload = serializer.serialize(record, { includeId: true });

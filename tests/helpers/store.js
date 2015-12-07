@@ -3,6 +3,10 @@ import Adapter from 'dummy/adapters/socket-adapter';
 import Serializer from 'dummy/serializers/socket-serializer';
 import Store from 'dummy/store';
 
+const {
+  String: { decamelize }
+} = Ember;
+
 export default function(options) {
   var env = {};
   options = options || {};
@@ -26,6 +30,9 @@ export default function(options) {
       updateRecord: true,
       deleteRecord: true
     },
+    pathForType(modelName) {
+     return decamelize(modelName);
+    }
   }));
   container.register('serializer:-default', Serializer);
 
