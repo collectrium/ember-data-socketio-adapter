@@ -8,7 +8,7 @@ const {
   set,
   keys,
   EnumerableUtils: { forEach },
-  String: { decamelize },
+  String: { underscore },
   computed
 } = Ember;
 
@@ -230,7 +230,7 @@ export default DS.RESTAdapter.extend({
   createRecord: function(store, type, record) {
     var serializer = store.serializerFor(type.modelName),
       data = {};
-    data[decamelize(type.modelName)] = serializer.serialize(record);
+    data[underscore(type.modelName)] = serializer.serialize(record);
 
     return this.send(type, 'CREATE', data);
   },
@@ -245,10 +245,10 @@ export default DS.RESTAdapter.extend({
   createRecords: function(store, type, records) {
     var serializer = store.serializerFor(type.modelName),
       data = {};
-    data[decamelize(type.modelName)] = [];
+    data[underscore(type.modelName)] = [];
 
     forEach(records, function(record) {
-      data[decamelize(type.modelName)].push(serializer.serialize(record));
+      data[underscore(type.modelName)].push(serializer.serialize(record));
     });
     return this.send(type, 'CREATE_LIST', data);
   },
@@ -269,7 +269,7 @@ export default DS.RESTAdapter.extend({
       payload = this.filterUnchangedParams(payload, record);
     }
 
-    data[decamelize(type.modelName)] = payload;
+    data[underscore(type.modelName)] = payload;
 
     return this.send(type, 'UPDATE', data);
   },
@@ -302,7 +302,7 @@ export default DS.RESTAdapter.extend({
     var updateAsPatch = get(this, 'updateAsPatch');
     var data = {};
     var payloads = [];
-    data[decamelize(type.modelName)] = payloads;
+    data[underscore(type.modelName)] = payloads;
 
     forEach(records, function(record) {
       var payload = serializer.serialize(record, { includeId: true });

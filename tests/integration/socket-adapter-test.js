@@ -2,7 +2,7 @@ import DS from 'ember-data';
 import Ember from 'ember';
 import setupStore from 'dummy/tests/helpers/store';
 import fixtures from 'dummy/tests/fixtures';
-import { getFixture } from 'dummy/tests/fixtures';
+import { getFixture, addFixture } from 'dummy/tests/fixtures';
 import {module, test} from 'qunit';
 
 let store;
@@ -334,5 +334,27 @@ test('Delete Posts from Server\'s PUSH', function(assert) {
   run(() => {
     posts = store.all('post');
     assert.equal(get(posts, 'length'), 0, 'Posts with id 1 and 2 should be removed from store');
+  });
+});
+
+test('Request model key should be underscored', function(assert) {
+  const UserPreferences = DS.Model.extend();
+  env.container.register('model:user-preferences', UserPreferences);
+
+  run(() => {
+    addFixture('Create User Preferences', {
+      type: 'user-preferences',
+      requestType: 'CREATE',
+      hash: {
+          user_preferences: {}
+        }
+      }, {
+        user_preferences: [
+          { id: 1 }
+        ]
+    });
+    store.createRecord('user-preferences').save().then(() => {
+      assert.ok(socketRequest.hash.user_preferences, 'User Preferences key have to be underscored in request');
+    });
   });
 });
