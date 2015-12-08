@@ -1,3 +1,3 @@
-import SocketStore from 'socket-adapter/store';
+import SocketStore from 'socket-adapter/socket-store';
 
 export default SocketStore;

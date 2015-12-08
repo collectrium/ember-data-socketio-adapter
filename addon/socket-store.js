@@ -21,18 +21,18 @@ const {
 /*jshint -W079 */
 const PromiseArray = ArrayProxy.extend(PromiseProxyMixin);
 
-//copied from ember-data store core
+// copied from ember-data store core
 function isThenable(object) {
   return object && typeof object.then === 'function';
 }
-//copied from ember-data store core
+// copied from ember-data store core
 function serializerFor(container, type, defaultSerializer) {
   return container.lookup('serializer:' + type) ||
          container.lookup('serializer:application') ||
          container.lookup('serializer:' + defaultSerializer) ||
          container.lookup('serializer:-default');
 }
-//copied from ember-data store core
+// copied from ember-data store core
 function serializerForAdapter(adapter, type) {
   let serializer = adapter.serializer;
   const defaultSerializer = adapter.defaultSerializer;
@@ -52,7 +52,7 @@ function serializerForAdapter(adapter, type) {
 
   return serializer;
 }
-//copied from ember-data store core
+// copied from ember-data store core
 function _commit(adapter, store, operation, snapshot) {
   const internalModel = snapshot._internalModel;
   const modelName = snapshot.modelName;
@@ -85,7 +85,7 @@ function _commit(adapter, store, operation, snapshot) {
   }, label);
 }
 
-//copied from ember-data store core
+// copied from ember-data store core
 function promiseArray(promise, label) {
   return PromiseArray.create({
     promise: Promise.cast(promise, label)
@@ -94,7 +94,7 @@ function promiseArray(promise, label) {
 
 // copied from ember-data store core
 function coerceId(id) {
-  return id === null ? null : id+'';
+  return id === null ? null : id + '';
 }
 
 function _bulkCommit(adapter, store, operation, modelName, snapshots) {
@@ -142,7 +142,7 @@ export default DS.Store.extend(Evented, {
 
     // We are passed a query instead of an id.
     if (typeOf(id) === 'object') {
-      return promiseArray(this.findQuery(type, id).then(function(APRA){
+      return promiseArray(this.findQuery(type, id).then(function(APRA) {
         /**
         * APRA's content is array of InternalModels so we have to convert to records
         */
