@@ -6,9 +6,7 @@ import Ember from 'ember';
 const {
   get,
   set,
-  keys,
   EnumerableUtils: { forEach },
-  String: { underscore },
   computed
 } = Ember;
 
@@ -20,7 +18,6 @@ export default DS.RESTAdapter.extend({
     deleteRecord: false
   },
   updateAsPatch: true,
-  coalesceFindRequests: true,
   socketConnections: computed(function() {
     return Ember.Object.create();
   }),
@@ -32,8 +29,8 @@ export default DS.RESTAdapter.extend({
    * generate unique request id
    * @returns {string}
    */
-  generateRequestId: function() {
-    var S4 = function() {
+  generateRequestId() {
+    const S4 = function() {
       return Math.floor(
           Math.random() * 0x10000 // 65536
       ).toString(16);
@@ -53,7 +50,7 @@ export default DS.RESTAdapter.extend({
    * @param options
    * @returns {Ember.get|*|Object}
    */
-  getConnection: function(type, options) {
+  getConnection(type, options) {
     /*jshint -W004 */
     var address = get(this, 'socketAddress') + '/';
     var requestsPool = get(this, 'requestsPool');
@@ -188,23 +185,10 @@ export default DS.RESTAdapter.extend({
    *
    * @param store
    * @param type
-   * @param ids
-   * @returns {Ember.RSVP.Promise}
-   */
-
-  findMany: function(store, type, ids) {
-    //TODO: hash format TBD, imho should use {ids: ids}
-    return this.send(type, 'READ_LIST', {query: {id__in: ids}});
-  },
-
-  /**
-   *
-   * @param store
-   * @param type
    * @param id
    * @returns {Ember.RSVP.Promise}
    */
-  find: function(store, type, id) {
+  findRecord: function(store, type, id) {
     const model = store.modelFor(type.modelName),
       data = {
         id: id
@@ -227,10 +211,10 @@ export default DS.RESTAdapter.extend({
    * @param record
    * @returns {Ember.RSVP.Promise}
    */
-  createRecord: function(store, type, record) {
-    var serializer = store.serializerFor(type.modelName),
-      data = {};
-    data[underscore(type.modelName)] = serializer.serialize(record);
+  createRecord(store, type, snapshot) {
+    const serializer = store.serializerFor(type.modelName);
+    const data = {};
+    serializer.serializeIntoHash(data, type, snapshot, { includeId: true });
 
     return this.send(type, 'CREATE', data);
   },
@@ -242,14 +226,11 @@ export default DS.RESTAdapter.extend({
    * @param records
    * @returns {Ember.RSVP.Promise}
    */
-  createRecords: function(store, type, records) {
-    var serializer = store.serializerFor(type.modelName),
-      data = {};
-    data[underscore(type.modelName)] = [];
+  createRecords: function(store, type, snapshots) {
+    const serializer = store.serializerFor(type.modelName);
+    const data = {};
+    serializer.serializeIntoHash(data, type, snapshots, { includeId: true });
 
-    forEach(records, function(record) {
-      data[underscore(type.modelName)].push(serializer.serialize(record));
-    });
     return this.send(type, 'CREATE_LIST', data);
   },
 
@@ -260,34 +241,13 @@ export default DS.RESTAdapter.extend({
    * @param record
    * @returns {*|ajax|v.support.ajax|jQuery.ajax|Promise|E.ajax}
    */
-  updateRecord: function(store, type, record) {
-    var serializer = store.serializerFor(type.modelName),
-      data = {}, payload;
-    payload = serializer.serialize(record, { includeId: true });
-
-    if(get(this, 'updateAsPatch')) {
-      payload = this.filterUnchangedParams(payload, record);
-    }
-
-    data[underscore(type.modelName)] = payload;
+  updateRecord: function(store, type, snapshot) {
+    const serializer = store.serializerFor(type.modelName);
+    const data = {};
+    const updateAsPatch = get(this, 'updateAsPatch');
+    serializer.serializeIntoHash(data, type, snapshot, { includeId: true, updateAsPatch });
 
     return this.send(type, 'UPDATE', data);
-  },
-
-  filterUnchangedParams: function(hash, record) {
-    hash = Ember.copy(hash);
-    var originalData = get(record, 'data');
-    var id = hash.id;
-
-    forEach(keys(originalData), function(key) {
-      if(hash[key] === originalData[key]) {
-        delete hash[key];
-      }
-    });
-
-    hash.id = id;
-
-    return hash;
   },
 
   /**
@@ -297,20 +257,11 @@ export default DS.RESTAdapter.extend({
    * @param records
    * @returns {Ember.RSVP.Promise}
    */
-  updateRecords: function(store, type, records) {
-    var serializer = store.serializerFor(type.modelName);
-    var updateAsPatch = get(this, 'updateAsPatch');
-    var data = {};
-    var payloads = [];
-    data[underscore(type.modelName)] = payloads;
-
-    forEach(records, function(record) {
-      var payload = serializer.serialize(record, { includeId: true });
-      if(updateAsPatch) {
-        payload = this.filterUnchangedParams(payload, record);
-      }
-      payloads.push(payload);
-    }, this);
+  updateRecords: function(store, type, snapshots) {
+    const serializer = store.serializerFor(type.modelName);
+    const updateAsPatch = get(this, 'updateAsPatch');
+    const data = {};
+    serializer.serializeIntoHash(data, type, snapshots, { includeId: true, updateAsPatch });
 
     return this.send(type, 'UPDATE_LIST', data);
   },
@@ -336,7 +287,7 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   deleteRecords: function(store, type, records) {
-    var data = {
+    const data = {
       ids: []
     };
 

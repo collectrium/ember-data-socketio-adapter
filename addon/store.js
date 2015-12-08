@@ -1,6 +1,10 @@
 import DS from 'ember-data';
 import Ember from 'ember';
 
+import {
+  _normalizeSerializerPayload
+} from './serializer-response';
+
 const {
   get,
   String: { pluralize },
@@ -68,8 +72,7 @@ function _commit(adapter, store, operation, snapshot) {
       } else {
         payload = adapterPayload;
       }
-
-      store.didSaveRecord(internalModel, payload);
+      store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload));
     });
     return internalModel;
   }, (reason) => {
@@ -112,7 +115,7 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
         payload = adapterPayload;
       }
       forEach(internalModels, (internalModel, index) => {
-        store.didSaveRecord(internalModel, payload && payload[index]);
+        store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload && payload[index]));
       });
     });
     return internalModels;
@@ -161,6 +164,14 @@ export default DS.Store.extend(Evented, {
     }
     return this.findById(type, coerceId(id));
   },
+
+/*
+  didSaveRecord(internalModel, payload) {
+    this._backburner.schedule('normalizeRelationships', this, '_setupRelationships', internalModel, payload);
+    this.updateId(internalModel, payload);
+    internalModel.adapterDidCommit(payload);
+  },
+*/
 
   flushPendingSave: function() {
     const pending = this._pendingSave.slice();

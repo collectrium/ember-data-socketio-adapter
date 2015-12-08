@@ -30,6 +30,7 @@ export default function(options) {
       updateRecord: true,
       deleteRecord: true
     },
+    socketAddress: 'http://fake-endpoint.com/',
     pathForType(modelName) {
      return decamelize(modelName);
     }

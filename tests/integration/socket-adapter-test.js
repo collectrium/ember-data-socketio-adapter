@@ -151,12 +151,25 @@ test('Create Post', function(assert) {
               }
             }
           }, 'CREATE request should be sent with all new data');
-        assert.ok(post.get('isLoaded'), 'post should be loaded in store correctly');
+        assert.ok(get(post ,'isLoaded'), 'post should be loaded in store correctly');
       });
     });
   });
 });
 
+test('Create Post response is well serialized', function(assert) {
+  run(() => {
+    store.find('author', 1).then((author) => {
+      const post = store.createRecord('post', {
+        author: author,
+        name: 'Socket.io is awesome'
+      });
+      post.save().then((post) => {
+        assert.equal(get(post, 'id'), '1', 'response payload should be extracted in store correctly');
+      });
+    });
+  });
+});
 
 test('Create Posts', function(assert) {
   assert.expect(3);
@@ -164,27 +177,48 @@ test('Create Posts', function(assert) {
     store.find('author', 1).then(((author) => {
       assert.ok(!!author, 'Should find author #1');
       const posts = [
-        store.createRecord('post', {
-          author: author,
-          name: 'Socket.io is awesome'
-        }),
-        store.createRecord('post', {
-          author: author,
-          name: 'Ember.js is awesome'
-        })];
-        all(map(posts, (post) =>  post.save())).then((posts) => {
-          assert.deepEqual(socketRequest, {
-              type: 'post',
-              requestType: 'CREATE_LIST',
-              hash: {post: [
-                {name: 'Socket.io is awesome', comments: [], author: '1' },
-                {name: 'Ember.js is awesome', comments: [], author: '1' }
-              ]}
-            },
-            'CREATE_LIST request should be sent with all new data for both 2 posts'
-          );
-          assert.ok(filter(posts, (post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
-        });
+      store.createRecord('post', {
+        author: author,
+        name: 'Socket.io is awesome'
+      }),
+      store.createRecord('post', {
+        author: author,
+        name: 'Ember.js is awesome'
+      })];
+      all(map(posts, (post) =>  post.save())).then((posts) => {
+        assert.deepEqual(socketRequest, {
+            type: 'post',
+            requestType: 'CREATE_LIST',
+            hash: {post: [
+              {name: 'Socket.io is awesome', comments: [], author: '1' },
+              {name: 'Ember.js is awesome', comments: [], author: '1' }
+            ]}
+          },
+          'CREATE_LIST request should be sent with all new data for both 2 posts'
+        );
+        assert.ok(filter(posts, (post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
+      });
+    }));
+  });
+});
+
+test('Create Posts response is well serialized in right sequence', function(assert) {
+  run(() => {
+    store.find('author', 1).then(((author) => {
+      const posts = [
+      store.createRecord('post', {
+        author: author,
+        name: 'Socket.io is awesome'
+      }),
+      store.createRecord('post', {
+        author: author,
+        name: 'Ember.js is awesome'
+      })];
+      all(map(posts, (post) =>  post.save())).then((posts) => {
+        const [fPost, sPost] = posts;
+        assert.equal(get(fPost, 'name'), 'Socket.io is awesome', 'First returned post should have correct name');
+        assert.equal(get(sPost, 'name'), 'Ember.js is awesome', 'Second returned post should have correct name');
+      });
     }));
   });
 });

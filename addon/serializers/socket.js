@@ -3,12 +3,51 @@ import Ember from 'ember';
 
 const {
   get,
-  keys
+  keys,
+  copy,
+  String: { underscore },
+  EnumerableUtils: { forEach },
  } = Ember;
 
-export default DS.RESTSerializer.extend({
+const {
+  RESTSerializer
+} = DS;
+
+export default RESTSerializer.extend({
   extractFindQuery(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
+  },
+  filterUnchangedParams(hash, snapshot) {
+    hash = copy(hash);
+    const originalData = get(snapshot, 'data');
+    const { id } = hash;
+
+    forEach(keys(originalData), (key) => {
+      if(hash[key] === originalData[key]) {
+        delete hash[key];
+      }
+    });
+
+    hash.id = id;
+
+    return hash;
+  },
+  payloadKeyFromModelName(modelName) {
+    return underscore(modelName);
+  },
+  serializeIntoHash(hash, typeClass, snapshot, options) {
+    const isBulkOperation = snapshot instanceof Array;
+    const normalizedRootKey = this.payloadKeyFromModelName(typeClass.modelName);
+    if (isBulkOperation) {
+      const bulkPayload = [];
+      forEach(snapshot, (snapshotData) => {
+        bulkPayload.push(this.serialize(snapshotData, options));
+      });
+      hash[normalizedRootKey] = bulkPayload;
+    }
+    else {
+      hash[normalizedRootKey] = this.serialize(snapshot, options);
+    }
   },
   extractFindAll(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
@@ -26,7 +65,11 @@ export default DS.RESTSerializer.extend({
     return this.extractArray(store, type, payload);
   },
   serialize(snapshot, options) {
-    const hash = this._super(snapshot, options);
+    const { updateAsPatch } = options;
+    let hash = this._super(snapshot, options);
+    if (updateAsPatch) {
+      hash = this.filterUnchangedParams(hash, snapshot);
+    }
     return this.filterFields(hash, snapshot);
   },
   filterFields(data, snapshot) {
@@ -38,7 +81,7 @@ export default DS.RESTSerializer.extend({
     if(get(snapshot, 'isNew')) {
       retData = data;
     } else {
-      propsKeys.forEach(function(key) {
+      forEach(propsKeys, (key) => {
         const relationship = snapshot.record.relationshipFor(key);
         // We won't pass values if they didn't came from server ( not in dataKeys )
         // but allow to set new not-default values ( if they were added on client ) (null is default value)
