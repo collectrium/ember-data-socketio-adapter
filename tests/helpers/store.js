@@ -1,7 +1,7 @@
 import Ember from 'ember';
 import Adapter from 'dummy/adapters/socket-adapter';
 import Serializer from 'dummy/serializers/socket-serializer';
-import Store from 'dummy/store';
+import Store from 'dummy/services/store';
 
 const {
   String: { decamelize }
@@ -32,7 +32,7 @@ export default function(options) {
     },
     socketAddress: 'http://fake-endpoint.com/',
     pathForType(modelName) {
-     return decamelize(modelName);
+      return decamelize(modelName);
     }
   }));
   container.register('serializer:-default', Serializer);

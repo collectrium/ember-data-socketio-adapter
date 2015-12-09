@@ -3,7 +3,7 @@ import Ember from 'ember';
 
 import {
   _normalizeSerializerPayload
-} from './serializer-response';
+} from './../serializer-response';
 
 const {
   get,
@@ -156,7 +156,7 @@ export default DS.Store.extend(Evented, {
           query: APRA.get('query'),
           type: APRA.get('type'),
           _APRA: APRA,
-          addObject: function(record){
+          addObject(record) {
             this._APRA.manager.updateRecordArray(this._APRA, null, null, record);
           }
         });
@@ -164,14 +164,6 @@ export default DS.Store.extend(Evented, {
     }
     return this.findById(type, coerceId(id));
   },
-
-/*
-  didSaveRecord(internalModel, payload) {
-    this._backburner.schedule('normalizeRelationships', this, '_setupRelationships', internalModel, payload);
-    this.updateId(internalModel, payload);
-    internalModel.adapterDidCommit(payload);
-  },
-*/
 
   flushPendingSave: function() {
     const pending = this._pendingSave.slice();
