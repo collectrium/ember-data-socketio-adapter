@@ -9,17 +9,9 @@ const {
   get,
   String: { pluralize },
   EnumerableUtils: { forEach, map },
-  RSVP: { Promise },
-  ArrayProxy,
-  PromiseProxyMixin,
-  A: createArray,
   assert,
-  Evented,
-  isNone,
-  typeOf
+  Evented
 } = Ember;
-/*jshint -W079 */
-const PromiseArray = ArrayProxy.extend(PromiseProxyMixin);
 
 // copied from ember-data store core
 function isThenable(object) {
@@ -85,18 +77,6 @@ function _commit(adapter, store, operation, snapshot) {
   }, label);
 }
 
-// copied from ember-data store core
-function promiseArray(promise, label) {
-  return PromiseArray.create({
-    promise: Promise.cast(promise, label)
-  });
-}
-
-// copied from ember-data store core
-function coerceId(id) {
-  return id === null ? null : id + '';
-}
-
 function _bulkCommit(adapter, store, operation, modelName, snapshots) {
   const typeClass = store.modelFor(modelName);
   const promise = adapter[operation](store, typeClass, snapshots);
@@ -132,39 +112,6 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
 }
 
 export default DS.Store.extend(Evented, {
-  find: function(type, id) {
-    assert('You need to pass a type to the store\'s find method', arguments.length >= 1);
-    assert('You may not pass `' + id + '` as id to the store\'s find method', arguments.length === 1 || !isNone(id));
-
-    if (arguments.length === 1) {
-      return this.findAll(type);
-    }
-
-    // We are passed a query instead of an id.
-    if (typeOf(id) === 'object') {
-      return promiseArray(this.findQuery(type, id).then(function(APRA) {
-        /**
-        * APRA's content is array of InternalModels so we have to convert to records
-        */
-        const recordsArray = createArray(APRA.slice(0));
-        /**
-         * Return mutable array
-         */
-        return ArrayProxy.create({
-          content: recordsArray,
-          meta: APRA.get('meta'),
-          query: APRA.get('query'),
-          type: APRA.get('type'),
-          _APRA: APRA,
-          addObject(record) {
-            this._APRA.manager.updateRecordArray(this._APRA, null, null, record);
-          }
-        });
-      }));
-    }
-    return this.findById(type, coerceId(id));
-  },
-
   flushPendingSave: function() {
     const pending = this._pendingSave.slice();
     this._pendingSave = [];
