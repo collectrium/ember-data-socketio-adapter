@@ -2,13 +2,26 @@
 /*jshint camelcase: false */
 import DS from 'ember-data';
 import Ember from 'ember';
+import { RequestResponseLogger } from './../initializers/socket-request-response-logger';
 
 const {
   get,
   set,
   EnumerableUtils: { forEach },
-  computed
+  computed,
+  Logger: { debug }
 } = Ember;
+
+function printRequestStack(requestHash) {
+  const e = new Error();
+  const stack = e.stack.replace(/^[^\(]+?[\n$]/gm, '')
+     .replace(/^\s+at\s+/gm, '')
+     .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@')
+     .split('\n');
+  stack.shift();
+  stack.unshift('\n');
+  debug(requestHash, stack.join('\n'));
+}
 
 export default DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
@@ -18,6 +31,7 @@ export default DS.RESTAdapter.extend({
     deleteRecord: false
   },
   updateAsPatch: true,
+  logRequests: true,
   socketConnections: computed(function() {
     return Ember.Object.create();
   }),
@@ -90,6 +104,7 @@ export default DS.RESTAdapter.extend({
           } else {
             if (response.request_id && requestsPool[response.request_id]) {
               var resolver = requestsPool[response.request_id].resolve;
+              RequestResponseLogger.logResponse(response);
               delete response.request_id;
               delete requestsPool[response.request_id];
               Ember.run(null, resolver, response);
@@ -145,16 +160,21 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   send: function(type, requestType, hash) {
-    var connection = this.getConnection(type),
-      requestsPool = get(this, 'requestsPool'),
-      requestId = this.generateRequestId(),
-      deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.modelName);
+    const connection = this.getConnection(type);
+    const requestsPool = get(this, 'requestsPool');
+    const requestId = this.generateRequestId();
+    const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.modelName);
+    const logRequests = get(this, 'logRequests');
     if (!(hash instanceof Object)) {
       hash = {};
     }
     deffered.requestType = requestType;
     hash.request_id = requestId;
+    RequestResponseLogger.logRequest(hash);
     requestsPool[requestId] = deffered;
+    if (logRequests) {
+      printRequestStack(hash);
+    }
     connection.emit(requestType, hash);
     return deffered.promise;
   },
