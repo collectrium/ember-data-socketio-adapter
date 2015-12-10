@@ -3,8 +3,8 @@
  * @copyright Copyright 2014 Collectrium LLC.
  * @author Andrew Fan <andrew.fan@upsilonit.com>
  */
-// v0.1.46
-// 77a74eb (2015-11-04 18:13:11 +0300)
+// v0.1.47
+// 7927a3a (2015-11-04 18:27:38 +0300)
 
 
 (function(global) {
@@ -131,6 +131,7 @@ define("socket-adapter/adapter",
         var onConnectFailed = this.onConnectFailed;
         var onError = this.onError;
         var adapter = this;
+        var socketLogger = this.socketLogger;
 
         if (arguments.length === 1) {
           options = {};
@@ -161,6 +162,7 @@ define("socket-adapter/adapter",
               } else {
                 if (response.request_id && requestsPool[response.request_id]) {
                   var resolver = requestsPool[response.request_id].resolve;
+                  socketLogger.logResponse(response);
                   delete response.request_id;
                   delete requestsPool[response.request_id];
                   Ember.run(null, resolver, response);
@@ -223,6 +225,7 @@ define("socket-adapter/adapter",
         }
         deffered.requestType = requestType;
         hash.request_id = requestId;
+        this.socketLogger.logRequest(hash);
         requestsPool[requestId] = deffered;
         connection.emit(requestType, hash);
         return deffered.promise;
@@ -415,6 +418,28 @@ define("socket-adapter/adapter",
 
 
       openSocket: function() {
+        var APP = this.container.lookup('application:main');
+        var socketLogger = Ember.ArrayProxy.create({
+          _requests: [],
+          content: [],
+          logRequest: function(request) {
+            this._requests.addObject(request);
+          },
+          logResponse: function(response) {
+            var request = this._requests.findBy('request_id', response.request_id);
+            delete request.request_id;
+            delete response.request_id;
+            this._requests.removeObject(request);
+            this.addObject({
+              request: request,
+              response: response
+            });
+          }
+        });
+        this.socketLogger = socketLogger;
+        if (APP) {
+          APP.socketLogger = this.socketLogger;
+        }
         var config = {
           resource: 'handshake'
         };
@@ -435,7 +460,7 @@ define("socket-adapter/main",
     var adapter = __dependency2__["default"];
     var store = __dependency3__["default"];
 
-    var VERSION = '0.1.46';
+    var VERSION = '0.1.47';
     var SA;
     if ('undefined' === typeof SA) {
 
