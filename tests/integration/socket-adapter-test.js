@@ -14,6 +14,7 @@ const {
   get,
   set,
   run,
+  copy,
   EnumerableUtils: { forEach, map, filter },
   RSVP: { all }
  } = Ember;
@@ -32,13 +33,14 @@ window.io.connect = function(address) {
      * @param hash
      */
     emit: function(requestType, hash) {
-      var fix,
-        requestId = hash.request_id;
-      delete hash.request_id;
+      let fix;
+      const hashCopy = copy(hash);
+      const requestId = hash.request_id;
+      delete hashCopy.request_id;
       socketRequest = {};
       socketRequest.type = type;
       socketRequest.requestType = requestType;
-      socketRequest.hash = hash;
+      socketRequest.hash = hashCopy;
       forEach(fixtures, function(fixture) {
         if (JSON.stringify(fixture.request) === JSON.stringify(socketRequest)) {
           // return fixture deep copy, to save fixture data across all tests

@@ -4,7 +4,7 @@ const {
   A: createArray
 } = Ember;
 
-export const RequestResponseLogger = ArrayProxy.create({
+export const requestResponseLogger = ArrayProxy.create({
   _requests: createArray(),
   content: createArray(),
   logRequest(request) {
@@ -25,7 +25,7 @@ export const RequestResponseLogger = ArrayProxy.create({
 export default {
   name: 'socket-request-response-logger',
   initialize( registry, application ) {
-    application.register('socket-request-response-logger:-main', RequestResponseLogger, { instantiate: false, singleton: true });
+    application.register('socket-request-response-logger:-main', requestResponseLogger, { instantiate: false, singleton: true });
     application.inject('socket-request-response-logger:-main', 'application', 'application:main');
   }
 };

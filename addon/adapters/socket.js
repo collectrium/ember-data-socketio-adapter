@@ -2,7 +2,7 @@
 /*jshint camelcase: false */
 import DS from 'ember-data';
 import Ember from 'ember';
-import { RequestResponseLogger } from './../initializers/socket-request-response-logger';
+import { requestResponseLogger } from './../initializers/socket-request-response-logger';
 
 const {
   get,
@@ -32,6 +32,7 @@ export default DS.RESTAdapter.extend({
   },
   updateAsPatch: true,
   logRequests: true,
+  collectRequestResponseLog: true,
   socketConnections: computed(function() {
     return Ember.Object.create();
   }),
@@ -75,6 +76,7 @@ export default DS.RESTAdapter.extend({
     var onError = this.onError;
     var adapter = this;
     const store = adapter.store;
+    const collectRequestResponseLog = get(this, 'collectRequestResponseLog');
 
     if (arguments.length === 1) {
       options = {};
@@ -104,7 +106,9 @@ export default DS.RESTAdapter.extend({
           } else {
             if (response.request_id && requestsPool[response.request_id]) {
               var resolver = requestsPool[response.request_id].resolve;
-              RequestResponseLogger.logResponse(response);
+              if (collectRequestResponseLog) {
+                requestResponseLogger.logResponse(response);
+              }
               delete response.request_id;
               delete requestsPool[response.request_id];
               Ember.run(null, resolver, response);
@@ -165,12 +169,15 @@ export default DS.RESTAdapter.extend({
     const requestId = this.generateRequestId();
     const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.modelName);
     const logRequests = get(this, 'logRequests');
+    const collectRequestResponseLog = get(this, 'collectRequestResponseLog');
     if (!(hash instanceof Object)) {
       hash = {};
     }
     deffered.requestType = requestType;
     hash.request_id = requestId;
-    RequestResponseLogger.logRequest(hash);
+    if (collectRequestResponseLog) {
+      requestResponseLogger.logRequest(hash);
+    }
     requestsPool[requestId] = deffered;
     if (logRequests) {
       printRequestStack(hash);
