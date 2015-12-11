@@ -167,7 +167,8 @@ export default DS.RESTAdapter.extend({
     const connection = this.getConnection(type);
     const requestsPool = get(this, 'requestsPool');
     const requestId = this.generateRequestId();
-    const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + type.modelName);
+    const modelName = type.modelName;
+    const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + modelName);
     const logRequests = get(this, 'logRequests');
     const collectRequestResponseLog = get(this, 'collectRequestResponseLog');
     if (!(hash instanceof Object)) {
@@ -176,7 +177,11 @@ export default DS.RESTAdapter.extend({
     deffered.requestType = requestType;
     hash.request_id = requestId;
     if (collectRequestResponseLog) {
-      requestResponseLogger.logRequest(hash);
+      requestResponseLogger.logRequest({
+        modelName,
+        operation: requestType,
+        hash
+      });
     }
     requestsPool[requestId] = deffered;
     if (logRequests) {
