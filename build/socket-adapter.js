@@ -436,7 +436,7 @@ define("socket-adapter/adapter",
             this._requests.removeObject(request);
             this.addObject({
               request: request,
-              response: response
+              response: Ember.$.extend(true, {}, response)
             });
           }
         });
