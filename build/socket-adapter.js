@@ -73,7 +73,7 @@ var define, requireModule, require, requirejs;
     }
   };
 })();
-define("socket-adapter/adapter", 
+define("socket-adapter/adapter",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -225,7 +225,11 @@ define("socket-adapter/adapter",
         }
         deffered.requestType = requestType;
         hash.request_id = requestId;
-        this.socketLogger.logRequest(hash);
+        this.socketLogger.logRequest({
+          modelName: type.typeKey,
+          operation: requestType,
+          hash: hash
+        });
         requestsPool[requestId] = deffered;
         connection.emit(requestType, hash);
         return deffered.promise;
@@ -426,8 +430,8 @@ define("socket-adapter/adapter",
             this._requests.addObject(request);
           },
           logResponse: function(response) {
-            var request = this._requests.findBy('request_id', response.request_id);
-            delete request.request_id;
+            var request = this._requests.findBy('hash.request_id', response.request_id);
+            delete request.hash.request_id;
             delete response.request_id;
             this._requests.removeObject(request);
             this.addObject({
@@ -452,7 +456,7 @@ define("socket-adapter/adapter",
 
     __exports__["default"] = SocketAdapter;
   });
-define("socket-adapter/main", 
+define("socket-adapter/main",
   ["socket-adapter/serializer","socket-adapter/adapter","socket-adapter/store","exports"],
   function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
     "use strict";
@@ -478,7 +482,7 @@ define("socket-adapter/main",
 
     __exports__["default"] = SA;
   });
-define("socket-adapter/serializer", 
+define("socket-adapter/serializer",
   ["exports"],
   function(__exports__) {
     "use strict";
@@ -536,7 +540,7 @@ define("socket-adapter/serializer",
 
     __exports__["default"] = Serializer;
   });
-define("socket-adapter/store", 
+define("socket-adapter/store",
   ["exports"],
   function(__exports__) {
     "use strict";
