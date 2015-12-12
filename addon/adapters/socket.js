@@ -139,8 +139,7 @@ export default DS.RESTAdapter.extend({
           }
         });
         set(connections, type, socketNS);
-      }
-      else {
+      } else {
         socketNS.on('connect_failed', function(response) {
           if (onConnectFailed) {
             onConnectFailed.call(adapter, response);
@@ -308,7 +307,7 @@ export default DS.RESTAdapter.extend({
   deleteRecord: function(store, type, record) {
     var id = get(record, 'id');
 
-    return this.send(type, 'DELETE', {id: id});
+    return this.send(type, 'DELETE', { id });
   },
 
   /**
@@ -329,7 +328,6 @@ export default DS.RESTAdapter.extend({
 
     return this.send(type, 'DELETE_LIST', data);
   },
-
 
   openSocket: Ember.on('init', function() {
     var config = {
