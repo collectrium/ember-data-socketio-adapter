@@ -175,7 +175,7 @@ addFixture('Update Post without updating comments', {
   requestType: 'UPDATE',
   hash: {
     post: {
-      id: '1', name: 'Javascript is awesome', author: '1'
+      id: '1', name: 'Javascript is awesome'
     }
   }
 }, {
@@ -190,7 +190,7 @@ addFixture('Update Posts', {
   requestType: 'UPDATE_LIST',
   hash: {
     post: [
-      { id: '1', name: 'Javascript is awesome', author: "1" },
+      { id: '1', name: 'Javascript is awesome' },
       { id: '2', name: 'Javascript is awesome' }
     ]
   }

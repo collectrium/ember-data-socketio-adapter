@@ -6,7 +6,10 @@ const {
   keys,
   copy,
   String: { underscore },
-  EnumerableUtils: { forEach },
+  merge,
+  EnumerableUtils: { forEach, map },
+  compare,
+  isArray
  } = Ember;
 
 const {
@@ -17,20 +20,42 @@ export default RESTSerializer.extend({
   extractFindQuery(store, type, payload) {
     return this.extractArray(store, type, payload.payload);
   },
-  filterUnchangedParams(hash, snapshot) {
+  buildDiff(hash, snapshot) {
     hash = copy(hash);
-    const originalData = get(snapshot, 'data');
-    const { id } = hash;
-
-    forEach(keys(originalData), (key) => {
-      if(hash[key] === originalData[key]) {
-        delete hash[key];
+    const isNew = get(snapshot, 'isNew');
+    if (isNew) {
+      return hash;
+    }
+    const diff = {
+      id: hash.id
+    };
+    const relationships = snapshot._internalModel._relationships;
+    const initializedRelationshipsKeys = keys(relationships.initializedRelationships);
+    const relationshipsData = {};
+    forEach(initializedRelationshipsKeys, (key) => {
+      const relationship = relationships.get(key);
+      if (relationship.hasData && relationship.hasLoaded && relationship.canonicalState) {
+        if (isArray(relationship.canonicalState)) {
+          relationshipsData[key] = map(relationship.canonicalState, (internalModel) => {
+            return get(internalModel.getRecord(), 'id');
+          });
+        } else {
+          relationshipsData[key] = get(relationship.canonicalState.getRecord(), 'id');
+        }
+      } else {
+        relationshipsData[key] = null;
+      }
+    });
+    const attributesData = get(snapshot, 'data');
+    const possibleHash = merge(attributesData, relationshipsData);
+    forEach(keys(possibleHash), (key) => {
+      if (compare(hash[key], possibleHash[key]) && hash[key] !== undefined) {
+        // TODO: handle dates and all transforms processed data correctly
+        diff[key] = hash[key];
       }
     });
 
-    hash.id = id;
-
-    return hash;
+    return diff;
   },
   payloadKeyFromModelName(modelName) {
     return underscore(modelName);
@@ -44,8 +69,7 @@ export default RESTSerializer.extend({
         bulkPayload.push(this.serialize(snapshotData, options));
       });
       hash[normalizedRootKey] = bulkPayload;
-    }
-    else {
+    } else {
       hash[normalizedRootKey] = this.serialize(snapshot, options);
     }
   },
@@ -64,32 +88,12 @@ export default RESTSerializer.extend({
   extractDeleteRecords(store, type, payload) {
     return this.extractArray(store, type, payload);
   },
-  serialize(snapshot, options) {
+  serialize(snapshot, options = {}) {
     const { updateAsPatch } = options;
     let hash = this._super(snapshot, options);
     if (updateAsPatch) {
-      hash = this.filterUnchangedParams(hash, snapshot);
+      hash = this.buildDiff(hash, snapshot);
     }
-    return this.filterFields(hash, snapshot);
-  },
-  filterFields(data, snapshot) {
-    const dataKeys = keys(get(snapshot, 'data')); // sended from server properties
-    const propsKeys = keys(data); // properties from object
-    let retData = {};
-
-    // skip pick-logic for CREATE requests
-    if(get(snapshot, 'isNew')) {
-      retData = data;
-    } else {
-      forEach(propsKeys, (key) => {
-        const relationship = snapshot.record.relationshipFor(key);
-        // We won't pass values if they didn't came from server ( not in dataKeys )
-        // but allow to set new not-default values ( if they were added on client ) (null is default value)
-        if(dataKeys.indexOf(key)  >= 0 || (!(relationship && relationship.kind === 'hasMany') && data[key] !== null)) {
-          retData[key] = data[key];
-        }
-      });
-    }
-    return retData;
+    return hash;
   }
 });

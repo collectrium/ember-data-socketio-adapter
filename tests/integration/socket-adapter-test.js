@@ -238,7 +238,7 @@ test('Update Post', function(assert) {
           type: 'post',
           requestType: 'UPDATE',
           hash: { post: {
-            id: '1', name: 'Javascript is awesome', author: '1'
+            id: '1', name: 'Javascript is awesome'
           }
           }
         },
@@ -263,7 +263,7 @@ test('Update Posts', function(assert) {
           type: 'post',
           requestType: 'UPDATE_LIST',
           hash: { post: [
-            { id: '1', name: 'Javascript is awesome', author: '1' },
+            { id: '1', name: 'Javascript is awesome' },
             { id: '2', name: 'Javascript is awesome' }
           ]}
         },
