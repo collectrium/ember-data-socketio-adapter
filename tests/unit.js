@@ -436,3 +436,28 @@ test('Filterd Records should be added in store correctly', function() {
     }));
   }));
 });
+
+test('Fetch one record by query should use passed params', function() {
+  expect(2);
+
+  store.fetchOneByQuery('post', 1, {
+    fields: ['author.name'],
+    include: ['comments']
+  }).then(async(function(post) {
+    deepEqual(socketRequest, {
+      type: 'post',
+      requestType: 'READ_LIST',
+      hash: {
+        query: {
+          id: 1
+        },
+        limit: 1,
+        fields: ['author.name'],
+        include: ['comments']
+      }
+    }, "Request should be : {\ntype: \'post\',\nrequestType: \'READ_LIST\',\nhash: {\nquery: {\nid: 1,\nlimit: 1\n},\nfields: [\'author.name\'],\ninclude: [\'comments\']\n}\n}");
+
+    ok(post instanceof Post, 'Should return Post instance');
+  }));
+
+});
