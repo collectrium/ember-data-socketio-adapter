@@ -1,0 +1,23 @@
+{
+  "name": "ember-data",
+  "main": "ember-data.js",
+  "dependencies": {
+    "ember": ">= 1.8.1 < 2.0.0"
+  },
+  "ignore": [
+    "**/*_configuration.js",
+    "ember-data-setup.js",
+    "docs",
+    "**/*.html"
+  ],
+  "homepage": "https://github.com/andrewfan/ember-data-1.0.0-beta.16-with-relationship-getter",
+  "_release": "75e19b63a5",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "75e19b63a5685ea2ea902bbba90300915cb41213"
+  },
+  "_source": "git://github.com/andrewfan/ember-data-1.0.0-beta.16-with-relationship-getter.git",
+  "_target": "*",
+  "_originalSource": "andrewfan/ember-data-1.0.0-beta.16-with-relationship-getter"
+}
