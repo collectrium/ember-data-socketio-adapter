@@ -10,33 +10,28 @@ const {
   EnumerableUtils: { forEach },
   computed,
   Logger: { debug }
-} = Ember;
+  } = Ember;
 
 function printRequestStack(requestHash) {
   const e = new Error();
+  if (!e.stack) {
+    return; // phantomjs for
+  }
   const stack = e.stack.replace(/^[^\(]+?[\n$]/gm, '')
-     .replace(/^\s+at\s+/gm, '')
-     .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@')
-     .split('\n');
+    .replace(/^\s+at\s+/gm, '')
+    .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@')
+    .split('\n');
   stack.shift();
   stack.unshift('\n');
   debug(requestHash, stack.join('\n'));
 }
 
 export default DS.RESTAdapter.extend({
-  socketAddress: 'http://api.collectrium.websocket:5000',
-  bulkOperationsSupport: {
-    createRecord: false,
-    updateRecord: false,
-    deleteRecord: false
-  },
-  updateAsPatch: true,
-  logRequests: true,
-  collectRequestResponseLog: true,
-  socketConnections: computed(function() {
+  socketAddress: 'http://api.collectrium.websocket:5000', bulkOperationsSupport: {
+    createRecord: false, updateRecord: false, deleteRecord: false
+  }, updateAsPatch: true, logRequests: true, collectRequestResponseLog: true, socketConnections: computed(function() {
     return Ember.Object.create();
-  }),
-  requestsPool: computed(function() {
+  }), requestsPool: computed(function() {
     return [];
   }),
 
@@ -46,20 +41,14 @@ export default DS.RESTAdapter.extend({
    */
   generateRequestId() {
     const S4 = function() {
-      return Math.floor(
-          Math.random() * 0x10000 // 65536
+      return Math.floor(Math.random() * 0x10000 // 65536
       ).toString(16);
     };
 
     return (
-      S4() + S4() + '-' +
-      S4() + '-' +
-      S4() + '-' +
-      S4() + '-' +
-      S4() + S4() + S4()
-      );
-  },
-  /**
+      S4() + S4() + '-' + S4() + '-' + S4() + '-' + S4() + '-' + S4() + S4() + S4()
+    );
+  }, /**
    *
    * @param type
    * @param options
@@ -177,9 +166,7 @@ export default DS.RESTAdapter.extend({
     hash.request_id = requestId;
     if (collectRequestResponseLog) {
       requestResponseLogger.logRequest({
-        modelName,
-        operation: requestType,
-        hash
+        modelName, operation: requestType, hash
       });
     }
     requestsPool[requestId] = deffered;
@@ -220,10 +207,9 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   findRecord: function(store, type, id) {
-    const model = store.modelFor(type.modelName),
-      data = {
-        id: id
-      };
+    const model = store.modelFor(type.modelName), data = {
+      id: id
+    };
     if (model._findByIdParams) {
       if (model._findByIdParams.include) {
         data['include'] = model._findByIdParams.include;

@@ -3,30 +3,27 @@ import Ember from 'ember';
 
 const {
   Model
-} = DS;
+  } = DS;
 
 const {
   get,
   ArrayPolyfills: { map }
-} = Ember;
-
+  } = Ember;
 
 /**
-  Convert the payload from `serializer.extract` to a JSON-API Document.
-  @method _normalizeSerializerPayload
-  @private
-  @param {subclass of DS.Model} modelClass
-  @param {Object} payload
-  @return {Object} JSON-API Document
-*/
+ Convert the payload from `serializer.extract` to a JSON-API Document.
+ @method _normalizeSerializerPayload
+ @private
+ @param {subclass of DS.Model} modelClass
+ @param {Object} payload
+ @return {Object} JSON-API Document
+ */
 export function _normalizeSerializerPayload(modelClass, payload) {
   let data = null;
 
   if (payload) {
     if (Ember.typeOf(payload) === 'array') {
-      data = map.call(payload, (payload) => {
-        return _normalizeSerializerPayloadItem(modelClass, payload);
-      });
+      data = map.call(payload, (payload) => _normalizeSerializerPayloadItem(modelClass, payload));
     } else {
       data = _normalizeSerializerPayloadItem(modelClass, payload);
     }
@@ -36,14 +33,14 @@ export function _normalizeSerializerPayload(modelClass, payload) {
 }
 
 /**
-  Convert the payload representing a single record from `serializer.extract` to
-  a JSON-API Resource Object.
-  @method _normalizeSerializerPayloadItem
-  @private
-  @param {subclass of DS.Model} modelClass
-  @param {Object} payload
-  @return {Object} JSON-API Resource Object
-*/
+ Convert the payload representing a single record from `serializer.extract` to
+ a JSON-API Resource Object.
+ @method _normalizeSerializerPayloadItem
+ @private
+ @param {subclass of DS.Model} modelClass
+ @param {Object} payload
+ @return {Object} JSON-API Resource Object
+ */
 export function _normalizeSerializerPayloadItem(modelClass, itemPayload) {
   var item = {};
 
@@ -68,12 +65,12 @@ export function _normalizeSerializerPayloadItem(modelClass, itemPayload) {
         if (Ember.isNone(value)) {
           return null;
         }
-        //Temporary support for https://github.com/emberjs/data/issues/3271
+        // Temporary support for https://github.com/emberjs/data/issues/3271
         if (value instanceof Model) {
           value = { id: value.id, type: value.constructor.modelName };
         }
         if (Ember.typeOf(value) === 'object') {
-          Ember.assert('Ember Data expected a number or string to represent the record(s) in the `' + key + '` relationship instead it found an object. If this is a polymorphic relationship please specify a `type` key. If this is an embedded relationship please include the `DS.EmbeddedRecordsMixin` and specify the `' + key +'` property in your serializer\'s attrs object.', value.type);
+          Ember.assert('Ember Data expected a number or string to represent the record(s) in the `' + key + '` relationship instead it found an object. If this is a polymorphic relationship please specify a `type` key. If this is an embedded relationship please include the `DS.EmbeddedRecordsMixin` and specify the `' + key + '` property in your serializer\'s attrs object.', value.type);
           if (value.id) {
             value.id = `${value.id}`;
           }
@@ -86,12 +83,12 @@ export function _normalizeSerializerPayloadItem(modelClass, itemPayload) {
 
       if (relationshipMeta.kind === 'belongsTo') {
         relationship.data = normalizeRelationshipData(value, relationshipMeta);
-        //handle the belongsTo polymorphic case, where { post:1, postType: 'video' }
+        // handle the belongsTo polymorphic case, where { post:1, postType: 'video' }
         if (relationshipMeta.options && relationshipMeta.options.polymorphic && itemPayload[key + 'Type']) {
           relationship.data.type = itemPayload[key + 'Type'];
         }
       } else if (relationshipMeta.kind === 'hasMany') {
-        //|| [] because the hasMany could be === null
+        // || [] because the hasMany could be === null
         Ember.assert("A " + relationshipMeta.parentType + " record was pushed into the store with the value of " + key + " being '" + Ember.inspect(value) + "', but " + key + " is a hasMany relationship so the value must be an array. You should probably check your data payload or serializer.", Ember.isArray(value) || value === null);
 
         var relationshipData = Ember.A(value || []);

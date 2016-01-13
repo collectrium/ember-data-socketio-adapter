@@ -155,10 +155,13 @@ export default DS.Store.extend(Evented, {
           bulkDataResolvers[typeIndex] = [];
           bulkDataAdapters[typeIndex] = adapter;
         }
-        bulkDataResolvers[typeIndex].push(resolver);
         if (!(bulkRecords[typeIndex][operationIndex] instanceof Array)) {
           bulkRecords[typeIndex][operationIndex] = [];
         }
+        if (!(bulkDataResolvers[typeIndex][operationIndex] instanceof Array)) {
+          bulkDataResolvers[typeIndex][operationIndex] = [];
+        }
+        bulkDataResolvers[typeIndex][operationIndex].push(resolver);
         bulkRecords[typeIndex][operationIndex].push(snapshot);
       } else {
         resolver.resolve(_commit(adapter, this, operation, snapshot));
@@ -171,14 +174,19 @@ export default DS.Store.extend(Evented, {
         for (let j = 0; j < bulkDataOperationMap.length; j++) {
           if (bulkRecords[i][j] && bulkRecords[i][j].length) {
             if (bulkRecords[i][j].length === 1) {
-              bulkDataResolvers[i][0].resolve(_commit(bulkDataAdapters[i], this, bulkDataOperationMap[j], bulkRecords[i][j][0]));
+              bulkDataResolvers[i][j][0].resolve(_commit(bulkDataAdapters[i], this, bulkDataOperationMap[j], bulkRecords[i][j][0]));
             } else {
               _bulkCommit(bulkDataAdapters[i], this, pluralize(bulkDataOperationMap[j]), bulkDataTypeMap[i], bulkRecords[i][j])
-                .then((snapshots) => {
-                  forEach(snapshots, (snapshot, index) => {
-                    bulkDataResolvers[i][index].resolve(snapshot);
-                  });
-                });
+                .then(
+                  (snapshots) => {
+                    forEach(snapshots, (snapshot, index) => {
+                      bulkDataResolvers[i][j][index].resolve(snapshot);
+                    });
+                  },
+                  (response) => {
+                    bulkDataResolvers[i][j].forEach((promise) => promise.reject(response));
+                  }
+                );
             }
           }
         }
