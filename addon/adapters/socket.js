@@ -27,11 +27,19 @@ function printRequestStack(requestHash) {
 }
 
 export default DS.RESTAdapter.extend({
-  socketAddress: 'http://api.collectrium.websocket:5000', bulkOperationsSupport: {
-    createRecord: false, updateRecord: false, deleteRecord: false
-  }, updateAsPatch: true, logRequests: true, collectRequestResponseLog: true, socketConnections: computed(function() {
+  socketAddress: 'http://api.collectrium.websocket:5000',
+  bulkOperationsSupport: {
+    createRecord: false,
+    updateRecord: false,
+    deleteRecord: false
+  },
+  updateAsPatch: true,
+  logRequests: true,
+  collectRequestResponseLog: true,
+  socketConnections: computed(function() {
     return Ember.Object.create();
-  }), requestsPool: computed(function() {
+  }),
+  requestsPool: computed(function() {
     return [];
   }),
 
@@ -41,14 +49,14 @@ export default DS.RESTAdapter.extend({
    */
   generateRequestId() {
     const S4 = function() {
-      return Math.floor(Math.random() * 0x10000 // 65536
-      ).toString(16);
+      return Math.floor(Math.random() * 0x10000).toString(16); // 65536
     };
 
     return (
       S4() + S4() + '-' + S4() + '-' + S4() + '-' + S4() + '-' + S4() + S4() + S4()
     );
-  }, /**
+  },
+  /**
    *
    * @param type
    * @param options
@@ -101,12 +109,11 @@ export default DS.RESTAdapter.extend({
               delete response.request_id;
               delete requestsPool[response.request_id];
               Ember.run(null, resolver, response);
-            }
-            /**
-             * Handling PUSH notifications
-             * Operations can be only multiple
-             */
-            else {
+            } else {
+              /**
+               * Handling PUSH notifications
+               * Operations can be only multiple
+               */
               store.trigger('notification', response);
               // if response contains only ids array it means that we receive DELETE
               if (response.ids) {
@@ -166,7 +173,9 @@ export default DS.RESTAdapter.extend({
     hash.request_id = requestId;
     if (collectRequestResponseLog) {
       requestResponseLogger.logRequest({
-        modelName, operation: requestType, hash
+        modelName,
+        operation: requestType,
+        hash
       });
     }
     requestsPool[requestId] = deffered;
@@ -262,7 +271,10 @@ export default DS.RESTAdapter.extend({
     const serializer = store.serializerFor(type.modelName);
     const data = {};
     const updateAsPatch = get(this, 'updateAsPatch');
-    serializer.serializeIntoHash(data, type, snapshot, { includeId: true, updateAsPatch });
+    serializer.serializeIntoHash(data, type, snapshot, {
+      includeId: true,
+      updateAsPatch
+    });
 
     return this.send(type, 'UPDATE', data);
   },
@@ -278,7 +290,10 @@ export default DS.RESTAdapter.extend({
     const serializer = store.serializerFor(type.modelName);
     const updateAsPatch = get(this, 'updateAsPatch');
     const data = {};
-    serializer.serializeIntoHash(data, type, snapshots, { includeId: true, updateAsPatch });
+    serializer.serializeIntoHash(data, type, snapshots, {
+      includeId: true,
+      updateAsPatch
+    });
 
     return this.send(type, 'UPDATE_LIST', data);
   },
