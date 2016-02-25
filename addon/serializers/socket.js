@@ -49,13 +49,16 @@ export default RESTSerializer.extend({
     const attributesData = get(snapshot, 'data');
     const possibleHash = merge(attributesData, relationshipsData);
     forEach(keys(possibleHash), (key) => {
-      if (compare(hash[key], possibleHash[key]) && hash[key] !== undefined) {
+      if (this.isDiffer(hash[key], possibleHash[key]) && hash[key] !== undefined) {
         // TODO: handle dates and all transforms processed data correctly
         diff[key] = hash[key];
       }
     });
 
     return diff;
+  },
+  isDiffer(a, b) {
+    return compare(a, b);
   },
   payloadKeyFromModelName(modelName) {
     return underscore(modelName);
