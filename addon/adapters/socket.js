@@ -28,6 +28,7 @@ function printRequestStack(requestHash) {
 
 export default DS.RESTAdapter.extend({
   socketAddress: 'http://api.collectrium.websocket:5000',
+  socketHandshakeQuery: '',
   bulkOperationsSupport: {
     createRecord: false,
     updateRecord: false,
@@ -334,7 +335,10 @@ export default DS.RESTAdapter.extend({
     var config = {
       resource: 'handshake'
     };
-    if (this.version) {
+    var socketHandshakeQuery = get(this, 'socketHandshakeQuery');
+    if (socketHandshakeQuery) {
+      config.query = socketHandshakeQuery;
+    } else if (this.version) {
       config.query = 'version=' + this.version;
     }
     this.getConnection(config);
