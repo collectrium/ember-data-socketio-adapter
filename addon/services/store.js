@@ -63,7 +63,7 @@ function _commit(adapter, store, operation, snapshot) {
       } else {
         payload = adapterPayload;
       }
-      store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload));
+      store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload.data));
     });
     return internalModel;
   }, (reason) => {

@@ -94,7 +94,7 @@ export default RESTSerializer.extend({
     const { updateAsPatch } = options;
     let hash = this._super(snapshot, options);
     if (updateAsPatch) {
-      hash = this.buildDiff(hash, snapshot);
+      hash = this.buildDiff(hash, snapshot.record);
     }
     return hash;
   }
