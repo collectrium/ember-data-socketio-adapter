@@ -16,8 +16,23 @@ const {
 } = DS;
 
 export default RESTSerializer.extend({
-  extractFindQuery(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  isNewSerializerAPI: true,
+
+  payloadWithMeta(payload) {
+    let meta;
+    let customPayload = payload.payload;
+
+    if (payload && payload['meta'] !== undefined) {
+      meta = payload.meta;
+    }
+    customPayload.meta = meta;
+
+    return customPayload;
+  },
+
+  normalizeQueryResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
   buildDiff(hash, snapshot) {
     hash = copy(hash);
@@ -75,20 +90,22 @@ export default RESTSerializer.extend({
       hash[normalizedRootKey] = this.serialize(snapshot, options);
     }
   },
-  extractFindAll(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  normalizeFindAllResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
-  extractFindMany(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  normalizeFindManyResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
-  extractCreateRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeCreateRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
-  extractUpdateRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeUpdateRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
-  extractDeleteRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeDeleteRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
   serialize(snapshot, options = {}) {
     const { updateAsPatch } = options;
