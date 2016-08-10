@@ -7,7 +7,6 @@ import { requestResponseLogger } from './../initializers/socket-request-response
 const {
   get,
   set,
-  EnumerableUtils: { forEach },
   computed,
   Logger: { debug }
   } = Ember;
@@ -119,7 +118,7 @@ export default DS.RESTAdapter.extend({
               // if response contains only ids array it means that we receive DELETE
               if (response.ids) {
                 // remove all records from store without sending DELETE requests
-                forEach(response.ids, function(id) {
+                response.ids.forEach(function(id) {
                   const record = store.getById(type, id);
                   if (record) {
                     store.unloadRecord(record);
@@ -324,7 +323,7 @@ export default DS.RESTAdapter.extend({
       ids: []
     };
 
-    forEach(records, function(record) {
+    records.forEach(function(record) {
       data.ids.push(get(record, 'id'));
     });
 

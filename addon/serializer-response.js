@@ -5,10 +5,7 @@ const {
   Model
   } = DS;
 
-const {
-  get,
-  ArrayPolyfills: { map }
-  } = Ember;
+const { get } = Ember;
 
 /**
  Convert the payload from `serializer.extract` to a JSON-API Document.
@@ -23,7 +20,7 @@ export function _normalizeSerializerPayload(modelClass, payload) {
 
   if (payload) {
     if (Ember.typeOf(payload) === 'array') {
-      data = map.call(payload, (payload) => _normalizeSerializerPayloadItem(modelClass, payload));
+      data = payload.map((payload) => _normalizeSerializerPayloadItem(modelClass, payload));
     } else {
       data = _normalizeSerializerPayloadItem(modelClass, payload);
     }
@@ -92,7 +89,7 @@ export function _normalizeSerializerPayloadItem(modelClass, itemPayload) {
         Ember.assert("A " + relationshipMeta.parentType + " record was pushed into the store with the value of " + key + " being '" + Ember.inspect(value) + "', but " + key + " is a hasMany relationship so the value must be an array. You should probably check your data payload or serializer.", Ember.isArray(value) || value === null);
 
         var relationshipData = Ember.A(value || []);
-        relationship.data = map.call(relationshipData, function(item) {
+        relationship.data = relationshipData.map(function(item) {
           return normalizeRelationshipData(item, relationshipMeta);
         });
       }
