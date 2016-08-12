@@ -19,13 +19,11 @@ export default RESTSerializer.extend({
   isNewSerializerAPI: true,
 
   payloadWithMeta(payload) {
-    let meta;
     let customPayload = payload.payload;
 
-    if (payload && payload['meta'] !== undefined) {
-      meta = payload.meta;
+    if (payload['meta'] !== undefined) {
+      customPayload.meta = payload.meta;
     }
-    customPayload.meta = meta;
 
     return customPayload;
   },
