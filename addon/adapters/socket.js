@@ -160,18 +160,15 @@ export default DS.RESTAdapter.extend({
    * @returns {Ember.RSVP.Promise}
    */
   send: function(type, requestType, hash) {
+    hash = this.buildRequest(type, requestType, hash);
+    this.onBeforeSendHash(hash);
     const connection = this.getConnection(type);
     const requestsPool = get(this, 'requestsPool');
-    const requestId = this.generateRequestId();
-    const modelName = type.modelName;
-    const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + modelName);
     const logRequests = get(this, 'logRequests');
+    const modelName = type.modelName;
     const collectRequestResponseLog = get(this, 'collectRequestResponseLog');
-    if (!(hash instanceof Object)) {
-      hash = {};
-    }
+    const deffered = Ember.RSVP.defer('DS: SocketAdapter#emit ' + requestType + ' to ' + modelName);
     deffered.requestType = requestType;
-    hash.request_id = requestId;
     if (collectRequestResponseLog) {
       requestResponseLogger.logRequest({
         modelName,
@@ -179,12 +176,25 @@ export default DS.RESTAdapter.extend({
         hash
       });
     }
-    requestsPool[requestId] = deffered;
+    requestsPool[hash.request_id] = deffered;
     if (logRequests) {
       printRequestStack(hash);
     }
     connection.emit(requestType, hash);
     return deffered.promise;
+  },
+
+  buildRequest(type, requestType, hash) {
+    const requestId = this.generateRequestId();
+    if (!(hash instanceof Object)) {
+      hash = {};
+    }
+    hash.request_id = requestId;
+    return hash;
+  },
+
+  onBeforeSendHash(/*hash*/) {
+
   },
 
   /**
