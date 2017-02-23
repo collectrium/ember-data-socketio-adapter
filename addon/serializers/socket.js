@@ -7,7 +7,6 @@ const {
   copy,
   String: { underscore },
   merge,
-  EnumerableUtils: { forEach, map },
   compare,
   isArray
  } = Ember;
@@ -17,8 +16,21 @@ const {
 } = DS;
 
 export default RESTSerializer.extend({
-  extractFindQuery(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  isNewSerializerAPI: true,
+
+  payloadWithMeta(payload) {
+    let customPayload = payload.payload;
+
+    if (payload['meta'] !== undefined) {
+      customPayload.meta = payload.meta;
+    }
+
+    return customPayload;
+  },
+
+  normalizeQueryResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
   buildDiff(hash, snapshot) {
     hash = copy(hash);
@@ -32,11 +44,11 @@ export default RESTSerializer.extend({
     const relationships = snapshot._internalModel._relationships;
     const initializedRelationshipsKeys = keys(relationships.initializedRelationships);
     const relationshipsData = {};
-    forEach(initializedRelationshipsKeys, (key) => {
+    initializedRelationshipsKeys.forEach((key) => {
       const relationship = relationships.get(key);
       if (relationship.hasData && relationship.hasLoaded && relationship.canonicalState) {
         if (isArray(relationship.canonicalState)) {
-          relationshipsData[key] = map(relationship.canonicalState, (internalModel) => {
+          relationshipsData[key] = relationship.canonicalState.map((internalModel) => {
             return get(internalModel.getRecord(), 'id');
           });
         } else {
@@ -48,7 +60,7 @@ export default RESTSerializer.extend({
     });
     const attributesData = get(snapshot, 'data');
     const possibleHash = merge(attributesData, relationshipsData);
-    forEach(keys(possibleHash), (key) => {
+    keys(possibleHash).forEach((key) => {
       if (this.isDiffer(hash[key], possibleHash[key]) && hash[key] !== undefined) {
         // TODO: handle dates and all transforms processed data correctly
         diff[key] = hash[key];
@@ -68,7 +80,7 @@ export default RESTSerializer.extend({
     const normalizedRootKey = this.payloadKeyFromModelName(typeClass.modelName);
     if (isBulkOperation) {
       const bulkPayload = [];
-      forEach(snapshot, (snapshotData) => {
+      snapshot.forEach((snapshotData) => {
         bulkPayload.push(this.serialize(snapshotData, options));
       });
       hash[normalizedRootKey] = bulkPayload;
@@ -76,26 +88,28 @@ export default RESTSerializer.extend({
       hash[normalizedRootKey] = this.serialize(snapshot, options);
     }
   },
-  extractFindAll(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  normalizeFindAllResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
-  extractFindMany(store, type, payload) {
-    return this.extractArray(store, type, payload.payload);
+  normalizeFindManyResponse(store, type, payload) {
+    const customPayload = this.payloadWithMeta(payload);
+    return this.normalizeArrayResponse(store, type, customPayload);
   },
-  extractCreateRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeCreateRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
-  extractUpdateRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeUpdateRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
-  extractDeleteRecords(store, type, payload) {
-    return this.extractArray(store, type, payload);
+  normalizeDeleteRecordResponses(store, type, payload) {
+    return this.normalizeArrayResponse(store, type, payload);
   },
   serialize(snapshot, options = {}) {
     const { updateAsPatch } = options;
     let hash = this._super(snapshot, options);
     if (updateAsPatch) {
-      hash = this.buildDiff(hash, snapshot);
+      hash = this.buildDiff(hash, snapshot.record);
     }
     return hash;
   }

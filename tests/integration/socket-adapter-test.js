@@ -15,7 +15,6 @@ const {
   set,
   run,
   copy,
-  EnumerableUtils: { forEach, map, filter },
   RSVP: { all }
   } = Ember;
 
@@ -41,7 +40,7 @@ window.io.connect = function(address) {
       socketRequest.type = type;
       socketRequest.requestType = requestType;
       socketRequest.hash = hashCopy;
-      forEach(fixtures, function(fixture) {
+      fixtures.forEach(function(fixture) {
         if (JSON.stringify(fixture.request) === JSON.stringify(socketRequest)) {
           // return fixture deep copy, to save fixture data across all tests
           fix = JSON.stringify(fixture.response);
@@ -175,7 +174,7 @@ test('Create Posts', function(assert) {
       }), store.createRecord('post', {
         author: author, name: 'Ember.js is awesome'
       })];
-      all(map(posts, (post) =>  post.save())).then((posts) => {
+      all(posts.map((post) =>  post.save())).then((posts) => {
         assert.deepEqual(socketRequest, {
           type: 'post', requestType: 'CREATE_LIST', hash: {
             post: [{ name: 'Socket.io is awesome', comments: [], author: '1' }, {
@@ -185,7 +184,7 @@ test('Create Posts', function(assert) {
             }]
           }
         }, 'CREATE_LIST request should be sent with all new data for both 2 posts');
-        assert.ok(filter(posts, (post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
+        assert.ok(posts.filter((post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
       });
     }));
   });
@@ -199,7 +198,7 @@ test('Create Posts response is well serialized in right sequence', function(asse
       }), store.createRecord('post', {
         author: author, name: 'Ember.js is awesome'
       })];
-      all(map(posts, (post) =>  post.save())).then((posts) => {
+      all(posts.map((post) =>  post.save())).then((posts) => {
         const [fPost, sPost] = posts;
         assert.equal(get(fPost, 'name'), 'Socket.io is awesome', 'First returned post should have correct name');
         assert.equal(get(sPost, 'name'), 'Ember.js is awesome', 'Second returned post should have correct name');
@@ -235,7 +234,7 @@ test('Update Posts', function(assert) {
 
   run(() => {
     const posts = store.all('post');
-    forEach(posts, (post) => {
+    posts.forEach((post) => {
       set(post, 'name', 'Javascript is awesome');
     });
     posts.save().then(() => {

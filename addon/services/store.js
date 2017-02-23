@@ -8,7 +8,6 @@ import {
 const {
   get,
   String: { pluralize },
-  EnumerableUtils: { forEach, map },
   assert,
   Evented
 } = Ember;
@@ -36,7 +35,7 @@ function serializerForAdapter(adapter, type) {
 
   if (serializer === null || serializer === undefined) {
     serializer = {
-      extract: function(store, type, payload) {
+      normalizeResponse: function(store, type, payload) {
         return payload;
       }
     };
@@ -60,11 +59,11 @@ function _commit(adapter, store, operation, snapshot) {
 
     store._adapterRun(() => {
       if (adapterPayload) {
-        payload = serializer.extract(store, typeClass, adapterPayload, snapshot.id, operation);
+        payload = serializer.normalizeResponse(store, typeClass, adapterPayload, snapshot.id, operation);
       } else {
         payload = adapterPayload;
       }
-      store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload));
+      store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload.data));
     });
     return internalModel;
   }, (reason) => {
@@ -82,7 +81,7 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
   const promise = adapter[operation](store, typeClass, snapshots);
   const serializer = serializerForAdapter(store, adapter, modelName);
   const label = 'DS: Extract and notify about ' + operation + ' completion of ' + snapshots.length + ' of type ' + modelName;
-  const internalModels = map(snapshots, (snapshot) => snapshot._internalModel);
+  const internalModels = snapshots.map((snapshot) => snapshot._internalModel);
   assert('Your adapter\'s ' + operation + ' method must return a promise, but it returned ' + promise, isThenable(promise));
 
   return promise.then((adapterPayload) => {
@@ -90,17 +89,17 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
 
     store._adapterRun(function() {
       if (adapterPayload) {
-        payload = serializer.extract(store, typeClass, adapterPayload, null, operation);
+        payload = serializer.normalizeResponse(store, typeClass, adapterPayload, null, operation);
       } else {
         payload = adapterPayload;
       }
-      forEach(internalModels, (internalModel, index) => {
+      internalModels.forEach((internalModel, index) => {
         store.didSaveRecord(internalModel, _normalizeSerializerPayload(typeClass, payload && payload[index]));
       });
     });
     return internalModels;
   }, function(reason) {
-    forEach(internalModels, (internalModel) => {
+    internalModels.forEach((internalModel) => {
       if (reason instanceof DS.InvalidError) {
         store.recordWasInvalid(internalModel, reason.errors);
       } else {
@@ -125,7 +124,7 @@ export default DS.Store.extend(Evented, {
         'updateRecord'
       ];
 
-    forEach(pending, (pendingItem) => {
+    pending.forEach((pendingItem) => {
       const snapshot = pendingItem.snapshot;
       const internalModel = snapshot._internalModel;
       const resolver = pendingItem.resolver;
@@ -179,7 +178,7 @@ export default DS.Store.extend(Evented, {
               _bulkCommit(bulkDataAdapters[i], this, pluralize(bulkDataOperationMap[j]), bulkDataTypeMap[i], bulkRecords[i][j])
                 .then(
                   (snapshots) => {
-                    forEach(snapshots, (snapshot, index) => {
+                    snapshots.forEach((snapshot, index) => {
                       bulkDataResolvers[i][j][index].resolve(snapshot);
                     });
                   },
