@@ -204,7 +204,7 @@ export default DS.RESTAdapter.extend({
    * @param query
    * @returns {Ember.RSVP.Promise}
    */
-  findQuery: function(store, type, query) {
+  query: function(store, type, query) {
     return this.send(type, 'READ_LIST', query);
   },
 
