@@ -7,7 +7,6 @@ const {
 
 const {
   get,
-  ArrayPolyfills: { map }
   } = Ember;
 
 /**
@@ -23,7 +22,7 @@ export function _normalizeSerializerPayload(modelClass, payload) {
 
   if (payload) {
     if (Ember.typeOf(payload) === 'array') {
-      data = map.call(payload, (payload) => _normalizeSerializerPayloadItem(modelClass, payload));
+      data = [].map.call(payload, (payload) => _normalizeSerializerPayloadItem(modelClass, payload));
     } else {
       data = _normalizeSerializerPayloadItem(modelClass, payload);
     }
