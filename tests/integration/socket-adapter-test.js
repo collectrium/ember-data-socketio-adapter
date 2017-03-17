@@ -123,7 +123,7 @@ test('Find All Posts without options', function(assert) {
 test('Find Posts with meta', function(assert) {
   assert.expect(2);
   run(() => {
-    all([store.findQuery('post', { limit: 1 }), store.findQuery('post', { limit: 2 })]).then((response) => {
+    all([store.query('post', { limit: 1 }), store.findQuery('post', { limit: 2 })]).then((response) => {
       assert.equal(get(response[0], 'meta.total'), 1, 'meta.total in first query should be equal 1');
       assert.equal(get(response[1], 'meta.total'), 2, 'meta.total in first query should be equal 2');
     });
