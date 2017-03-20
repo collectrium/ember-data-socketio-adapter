@@ -99,7 +99,7 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
     });
     return internalModels;
   }, function(reason) {
-    forEach(internalModels, (internalModel) => {
+    internalModels.forEach((internalModel) => {
       if (reason instanceof DS.InvalidError) {
         store.recordWasInvalid(internalModel, reason.errors);
       } else {
