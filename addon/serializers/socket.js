@@ -7,7 +7,6 @@ const {
   copy,
   String: { underscore },
   merge,
-  EnumerableUtils: { forEach, map },
   compare,
   isArray
  } = Ember;
@@ -32,11 +31,11 @@ export default RESTSerializer.extend({
     const relationships = snapshot._internalModel._relationships;
     const initializedRelationshipsKeys = keys(relationships.initializedRelationships);
     const relationshipsData = {};
-    forEach(initializedRelationshipsKeys, (key) => {
+    initializedRelationshipsKeys.forEach((key) => {
       const relationship = relationships.get(key);
       if (relationship.hasData && relationship.hasLoaded && relationship.canonicalState) {
         if (isArray(relationship.canonicalState)) {
-          relationshipsData[key] = map(relationship.canonicalState, (internalModel) => {
+          relationshipsData[key] = relationship.canonicalState.map((internalModel) => {
             return get(internalModel.getRecord(), 'id');
           });
         } else {
@@ -48,7 +47,7 @@ export default RESTSerializer.extend({
     });
     const attributesData = get(snapshot, 'data');
     const possibleHash = merge(attributesData, relationshipsData);
-    forEach(keys(possibleHash), (key) => {
+    keys(possibleHash).forEach((key) => {
       if (this.isDiffer(hash[key], possibleHash[key]) && hash[key] !== undefined) {
         // TODO: handle dates and all transforms processed data correctly
         diff[key] = hash[key];
@@ -68,7 +67,7 @@ export default RESTSerializer.extend({
     const normalizedRootKey = this.payloadKeyFromModelName(typeClass.modelName);
     if (isBulkOperation) {
       const bulkPayload = [];
-      forEach(snapshot, (snapshotData) => {
+      snapshot.forEach((snapshotData) => {
         bulkPayload.push(this.serialize(snapshotData, options));
       });
       hash[normalizedRootKey] = bulkPayload;
