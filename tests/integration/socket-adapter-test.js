@@ -15,7 +15,6 @@ const {
   set,
   run,
   copy,
-  EnumerableUtils: { forEach, map, filter },
   RSVP: { all }
   } = Ember;
 
@@ -23,7 +22,7 @@ window.io = {};
 window.io.connect = function(address) {
   // TOOD: create typeFromAddress and addressFromType functions
   var type = address.split('/').reverse()[1];
-  return Ember.Object.createWithMixins(Ember.Evented, {
+  return Ember.Object.extend(Ember.Evented, {
 
     /**
      * Tests will emit events only for resource namespaces, so requestType and type are always set,
@@ -41,7 +40,7 @@ window.io.connect = function(address) {
       socketRequest.type = type;
       socketRequest.requestType = requestType;
       socketRequest.hash = hashCopy;
-      forEach(fixtures, function(fixture) {
+      fixtures.forEach((fixture) => {
         if (JSON.stringify(fixture.request) === JSON.stringify(socketRequest)) {
           // return fixture deep copy, to save fixture data across all tests
           fix = JSON.stringify(fixture.response);
@@ -55,7 +54,7 @@ window.io.connect = function(address) {
         console.error('fixture not found', socketRequest);
       }
     }
-  });
+  }).create();
 };
 
 module('Acceptance | Socket Adapter', {
@@ -86,7 +85,7 @@ module('Acceptance | Socket Adapter', {
 
     store = env.store;
     adapter = env.adapter;
-    env.container.register('transform:string', DS.StringTransform);
+    env.registry.register('transform:string', DS.StringTransform);
   }, afterEach() {
     run(store, 'destroy');
   }
@@ -175,7 +174,7 @@ test('Create Posts', function(assert) {
       }), store.createRecord('post', {
         author: author, name: 'Ember.js is awesome'
       })];
-      all(map(posts, (post) =>  post.save())).then((posts) => {
+      all(posts.map((post) =>  post.save())).then((posts) => {
         assert.deepEqual(socketRequest, {
           type: 'post', requestType: 'CREATE_LIST', hash: {
             post: [{ name: 'Socket.io is awesome', comments: [], author: '1' }, {
@@ -185,7 +184,7 @@ test('Create Posts', function(assert) {
             }]
           }
         }, 'CREATE_LIST request should be sent with all new data for both 2 posts');
-        assert.ok(filter(posts, (post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
+        assert.ok(posts.filter((post) => get(post, 'isLoaded')).length === 2, 'posts should be loaded in store correctly');
       });
     }));
   });
@@ -199,7 +198,7 @@ test('Create Posts response is well serialized in right sequence', function(asse
       }), store.createRecord('post', {
         author: author, name: 'Ember.js is awesome'
       })];
-      all(map(posts, (post) =>  post.save())).then((posts) => {
+      all(posts.map((post) =>  post.save())).then((posts) => {
         const [fPost, sPost] = posts;
         assert.equal(get(fPost, 'name'), 'Socket.io is awesome', 'First returned post should have correct name');
         assert.equal(get(sPost, 'name'), 'Ember.js is awesome', 'Second returned post should have correct name');
@@ -235,7 +234,7 @@ test('Update Posts', function(assert) {
 
   run(() => {
     const posts = store.all('post');
-    forEach(posts, (post) => {
+    posts.forEach((post) => {
       set(post, 'name', 'Javascript is awesome');
     });
     posts.save().then(() => {
@@ -273,8 +272,8 @@ test('Delete Posts', function(assert) {
   run(() => {
     const posts = store.all('post');
 
-    posts.findProperty('id', '1').deleteRecord();
-    posts.findProperty('id', '2').deleteRecord();
+    posts.findBy('id', '1').deleteRecord();
+    posts.findBy('id', '2').deleteRecord();
 
     posts.save().then((posts) => {
       assert.deepEqual(socketRequest, {
@@ -293,7 +292,7 @@ test('Read Posts with releations', function(assert) {
   run(() => {
     store.find('post', { include: ['comments', 'author'] }).then((posts) => {
       assert.equal(posts.get('length'), 2, 'posts length should be equal 2');
-      assert.equal(get(posts, 'firstObject.comments').findProperty('id', '1').get('name'), 'Greet.', 'first comment to first post should be equal "Greet."');
+      assert.equal(get(posts, 'firstObject.comments').findBy('id', '1').get('name'), 'Greet.', 'first comment to first post should be equal "Greet."');
       assert.equal(get(posts, 'firstObject.author.name'), 'Test', 'author name sholud be equal "Test"');
     });
   });
@@ -341,7 +340,7 @@ test('Delete Posts from Server\'s PUSH', function(assert) {
 
 test('Request model key should be underscored', function(assert) {
   const UserPreferences = DS.Model.extend();
-  env.container.register('model:user-preferences', UserPreferences);
+  env.registry.register('model:user-preferences', UserPreferences);
 
   run(() => {
     addFixture('Create User Preferences', {
