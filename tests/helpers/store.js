@@ -11,20 +11,22 @@ export default function(options) {
   var env = {};
   options = options || {};
 
+  var registry = env.registry = new Ember.Registry();
   var container = env.container = new Ember.Container();
+  container.registry = registry;
 
   var adapter = options.adapter || '-socket';
   delete options.adapter;
 
   for (var prop in options) {
-    container.register('model:' + prop, options[prop]);
+    registry.register('model:' + prop, options[prop]);
   }
 
-  container.register('store:main', Store.extend({
+  registry.register('store:main', Store.extend({
     adapter
   }));
 
-  container.register('adapter:-socket', Adapter.extend({
+  registry.register('adapter:-socket', Adapter.extend({
     bulkOperationsSupport: {
       createRecord: true,
       updateRecord: true,
@@ -35,9 +37,9 @@ export default function(options) {
       return decamelize(modelName);
     }
   }));
-  container.register('serializer:-default', Serializer);
+  registry.register('serializer:-default', Serializer);
 
-  container.injection('serializer', 'store', 'store:main');
+  registry.injection('serializer', 'store', 'store:main');
 
   env.serializer = container.lookup('serializer:-default');
   env.restSerializer = container.lookup('serializer:-rest');
