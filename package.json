@@ -1,6 +1,6 @@
 {
   "name": "socket-adapter",
-  "version": "0.1.51",
+  "version": "0.1.52",
   "description": "The default blueprint for ember-cli addons.",
   "directories": {
     "doc": "doc",
