@@ -23,7 +23,7 @@ export default RESTSerializer.extend({
     const changedRelations = {};
     const record = snapshot.record.toJSON();
 
-    snapshot.eachRelationship((name, meta) => {
+    snapshot.eachRelationship((name) => {
       const relationships = snapshot._internalModel._relationships;
       const relationship = relationships.get(name);
       let oldValue = null;
