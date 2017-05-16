@@ -15,7 +15,6 @@
 /libpeerconnection.log
 npm-debug.log
 testem.log
-yarn.lock
 
 /.tags
 /.tags1
