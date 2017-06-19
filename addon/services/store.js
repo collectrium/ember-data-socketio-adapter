@@ -59,7 +59,7 @@ function _commit(adapter, store, operation, snapshot) {
 
     store._adapterRun(() => {
       if (adapterPayload) {
-        payload = serializer.extract(store, typeClass, adapterPayload, snapshot.id, operation);
+        payload = serializer.normalizeResponse(store, typeClass, adapterPayload, snapshot.id, operation);
       } else {
         payload = adapterPayload;
       }
@@ -89,7 +89,7 @@ function _bulkCommit(adapter, store, operation, modelName, snapshots) {
 
     store._adapterRun(function() {
       if (adapterPayload) {
-        payload = serializer.extract(store, typeClass, adapterPayload, null, operation);
+        payload = serializer.normalizeResponse(store, typeClass, adapterPayload, null, operation);
       } else {
         payload = adapterPayload;
       }

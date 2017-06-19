@@ -119,9 +119,9 @@ export default DS.RESTAdapter.extend({
               if (response.ids) {
                 // remove all records from store without sending DELETE requests
                 response.ids.forEach(function(id) {
-                  const record = store.getById(type, id);
+                  const record = store.findRecord(type, id);
                   if (record) {
-                    store.unloadRecord(record);
+                    store.destroyRecord(record);
                   }
                 });
               }
