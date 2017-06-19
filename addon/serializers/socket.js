@@ -45,7 +45,7 @@ export default RESTSerializer.extend({
         relationshipsData[key] = null;
       }
     });
-    const attributesData = get(snapshot, 'data');
+    const attributesData = get(snapshot, 'data') || snapshot._internalModel._data;
     const possibleHash = merge(attributesData, relationshipsData);
     keys(possibleHash).forEach((key) => {
       if (this.isDiffer(hash[key], possibleHash[key]) && hash[key] !== undefined) {
